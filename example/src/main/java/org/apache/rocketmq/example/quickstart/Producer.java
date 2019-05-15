@@ -48,9 +48,11 @@ public class Producer {
         /*
          * Launch the instance.
          */
+        producer.setNamesrvAddr("127.0.0.1:9876"); // <x> 哈哈哈哈
+        producer.setSendMsgTimeout(300000000);
         producer.start();
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 1; i++) {
             try {
 
                 /*
@@ -58,7 +60,7 @@ public class Producer {
                  */
                 Message msg = new Message("TopicTest" /* Topic */,
                     "TagA" /* Tag */,
-                    ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
+                    ("Hello 金欧莱解耦股酒叟更煎熬国家级公安机关进公安局我感觉熬个价格就哦啊无购物功能哦啊个国家外加工啊问哪个 RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
 
                 /*

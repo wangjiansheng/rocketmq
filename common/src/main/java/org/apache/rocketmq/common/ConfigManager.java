@@ -16,10 +16,11 @@
  */
 package org.apache.rocketmq.common;
 
-import java.io.IOException;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
+
+import java.io.IOException;
 
 public abstract class ConfigManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
@@ -67,11 +68,26 @@ public abstract class ConfigManager {
 
     public abstract void decode(final String jsonString);
 
+    /**
+     * 保存:C:\Users\Administrator\store\config下的配置文件
+     *
+     * BrokerController定时任务调用{
+     *     consumerOffset 5s调用一次
+     *     consumerFilter 10s调用一次
+     * }
+     *ScheduleMessageService{
+     *     delayOffset 5s调用一次
+     *}
+     *
+     *
+     */
     public synchronized void persist() {
         String jsonString = this.encode(true);
         if (jsonString != null) {
             String fileName = this.configFilePath();
             try {
+                log.debug(jsonString);
+                log.debug("保存fileName:"+fileName);
                 MixAll.string2File(jsonString, fileName);
             } catch (IOException e) {
                 log.error("persist file " + fileName + " exception", e);

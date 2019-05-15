@@ -26,7 +26,7 @@
     </appender>
 
     <root>
-        <level value="OFF"/>
+        <level value="ON"/>
         <appender-ref ref="DefaultAppender"/>
     </root>
 </configuration>
