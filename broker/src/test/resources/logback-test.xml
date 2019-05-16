@@ -20,7 +20,7 @@
 
     <appender name="DefaultAppender" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyy-MM-dd HH\:mm\:ss,GMT+8} %p %t - %m%n</pattern>
+            <pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} %-5level[%thread]%logger{80}.%method:%L -%msg%n</pattern>
             <charset class="java.nio.charset.Charset">UTF-8</charset>
         </encoder>
     </appender>

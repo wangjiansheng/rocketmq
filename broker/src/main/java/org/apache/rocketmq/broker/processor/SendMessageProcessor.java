@@ -53,6 +53,9 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 处理失败返回的消息
+ */
 public class SendMessageProcessor extends AbstractSendMessageProcessor implements NettyRequestProcessor {
 
     private List<ConsumeMessageHook> consumeMessageHookList;
@@ -66,6 +69,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                                           RemotingCommand request) throws RemotingCommandException {
         SendMessageContext mqtraceContext;
         switch (request.getCode()) {
+            //处理失败返回的消息
             case RequestCode.CONSUMER_SEND_MSG_BACK:
                 return this.consumerSendMsgBack(ctx, request);
             default:
@@ -134,6 +138,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return response;
         }
 
+        //%RETRY%xxxxxx    重试队列
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
         int queueIdInt = Math.abs(this.random.nextInt() % 99999999) % subscriptionGroupConfig.getRetryQueueNums();
 
@@ -173,6 +178,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
 
         int delayLevel = requestHeader.getDelayLevel();
 
+        //重试最大次数
         int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();
         if (request.getVersion() >= MQVersion.Version.V3_4_9.ordinal()) {
             maxReconsumeTimes = requestHeader.getMaxReconsumeTimes();
@@ -193,6 +199,9 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 return response;
             }
         } else {
+            // 0又broker每次对重试消费次数加1来控制重试策略
+            //SCHEDULE TOPIC XXXX的队列名称是从2开始到17，
+            // 对应的delayLevel为3到18，3对应10s，18对应2h
             if (0 == delayLevel) {
                 delayLevel = 3 + msgExt.getReconsumeTimes();
             }
@@ -213,6 +222,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setBornTimestamp(msgExt.getBornTimestamp());
         msgInner.setBornHost(msgExt.getBornHost());
         msgInner.setStoreHost(this.getStoreHost());
+        //消息重试次数加1，默认值为0
         msgInner.setReconsumeTimes(msgExt.getReconsumeTimes() + 1);
 
         String originMsgId = MessageAccessor.getOriginMessageId(msgExt);

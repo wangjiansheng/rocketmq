@@ -111,6 +111,7 @@ public class ScheduleMessageService extends ConfigManager {
                     offset = 0L;
                 }
 
+                //交付延时消息
                 if (timeDelay != null) {
                     this.timer.schedule(new DeliverDelayedMessageTimerTask(level, offset), FIRST_DELAY_TIME);
                 }
@@ -226,6 +227,7 @@ public class ScheduleMessageService extends ConfigManager {
         public void run() {
             try {
                 if (isStarted()) {
+                    //处理延时到期的消息
                     this.executeOnTimeup();
                 }
             } catch (Exception e) {

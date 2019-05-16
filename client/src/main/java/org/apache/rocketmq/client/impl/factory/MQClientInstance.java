@@ -264,7 +264,7 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
-                    MQClientInstance.this.cleanOfflineBroker(
+                    MQClientInstance.this.cleanOfflineBroker();
                     MQClientInstance.this.sendHeartbeatToAllBrokerWithLock();
                 } catch (Exception e) {
                     log.error("ScheduledTask sendHeartbeatToAllBroker exception", e);
@@ -343,6 +343,7 @@ public class MQClientInstance {
      * Remove offline broker
      */
     private void cleanOfflineBroker() {
+        log.debug("删除离线代理 Remove offline broker");
         try {
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
                 try {

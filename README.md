@@ -5,25 +5,6 @@
 
 **[Apache RocketMQ](https://rocketmq.apache.org) is a distributed messaging and streaming platform with low latency, high performance and reliability, trillion-level capacity and flexible scalability.**
 
-It offers a variety of features:
-
-* Pub/Sub messaging model
-* Scheduled message delivery
-* Message retroactivity by time or offset
-* Log hub for streaming
-* Big data integration
-* Reliable FIFO and strict ordered messaging in the same queue
-* Efficient pull&push consumption model
-* Million-level message accumulation capacity in a single queue
-* Multiple messaging protocols like JMS and OpenMessaging
-* Flexible distributed scale-out deployment architecture
-* Lightning-fast batch message exchange system
-* Various message filter mechanics such as SQL and Tag
-* Docker images for isolated testing and cloud isolated clusters
-* Feature-rich administrative dashboard for configuration, metrics and monitoring
-* Access control list
-* Message trace
-
 
 ----------
 
@@ -37,17 +18,39 @@ It offers a variety of features:
 * Slack: <https://rocketmq-invite-automation.herokuapp.com/>
  
 
-----------
-
+---------
 ## Apache RocketMQ Community
 * [RocketMQ Community Projects](https://github.com/apache/rocketmq-externals)
 ----------
-
 ## Contributing
 We always welcome new contributions, whether for trivial cleanups, [big new features](https://github.com/apache/rocketmq/wiki/RocketMQ-Improvement-Proposal) or other material rewards, more details see [here](http://rocketmq.apache.org/docs/how-to-contribute/).
- 
+
 ----------
 ## License
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html) Copyright (C) Apache Software Foundation
+
+##重要的类
+
+#broker
+
+
+#namesev
+
+
+#store
+DefaultMessageStore.java  数据落地相关操作
+* load()  启动时候调用,加载落地的数据 
+* start() 启动时候调用,启动一些线程   来自 BrokerController.start();
+* recoverTopicQueueTable() 恢复topic信息
+
+ScheduleMessageService.java 延迟消息服务
+
+* start() 延时消息处理（DeliverDelayedMessageTimerTask）   DefaultMessageStore.handleScheduleMessageService()中调用
+
+
+MessageAccessor.java  消息寄存器 工具类 
+* Message里面维护一个map  Map<String, String> properties
+
+
 
 
