@@ -16,8 +16,6 @@
  */
 package org.apache.rocketmq.client.consumer;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.rocketmq.client.ClientConfig;
 import org.apache.rocketmq.client.QueryResult;
 import org.apache.rocketmq.client.consumer.rebalance.AllocateMessageQueueAveragely;
@@ -33,8 +31,14 @@ import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Default pulling consumer
+ * 服务端处理完之后，给客户端响应，回调其中的PullCallback，
+ * 其中在处理完消息之后，重要的一步就是再次把pullRequest放到
+ * PullMessageService服务中，等待下一次的轮询；
  */
 public class DefaultMQPullConsumer extends ClientConfig implements MQPullConsumer {
     protected final transient DefaultMQPullConsumerImpl defaultMQPullConsumerImpl;

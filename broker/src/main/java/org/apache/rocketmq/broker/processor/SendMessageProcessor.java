@@ -54,7 +54,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 处理失败返回的消息
+ * 处理消息
  */
 public class SendMessageProcessor extends AbstractSendMessageProcessor implements NettyRequestProcessor {
 
@@ -203,6 +203,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             // 0又broker每次对重试消费次数加1来控制重试策略
             //SCHEDULE TOPIC XXXX的队列名称是从2开始到17，
             // 对应的delayLevel为3到18，3对应10s，18对应2h
+            //默认级别为3表示10秒，这样再延时投送消息
+            //18个级别，分别对应时间 "1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h")
             if (0 == delayLevel) {
                 delayLevel = 3 + msgExt.getReconsumeTimes();
             }

@@ -52,5 +52,20 @@ MessageAccessor.java  消息寄存器 工具类
 * Message里面维护一个map  Map<String, String> properties
 
 
+#client
+PullAPIWrapper.java  PullAPIWrapper：长连接，负责从broker处拉取消息，然后利用ConsumeMessageService回调用户的Listener执行消息消费逻辑
+* pullKernelImpl()  发送请求的地方
+
+PullMessageService.java  拉请求的服务（服务启动之后，会一直不停的循环调用拉取数据）
+* 每个MessageQueue 对应了封装成了一个PullRequest，因为拉取数据是以每个Broker下面的Queue为单位，同时里面还一个ProcessQueue，每个MessageQueue也同样对应一个ProcessQueue，保存了这个MessageQueue消息处理状态的快照；还有nextOffset用来标识读取的位置
+    
+PullCallback回调
+*  服务端处理完之后，给客户端响应，回调其中的PullCallback，其中在处理完消息之后，重要的一步就是再次把pullRequest放到PullMessageService服务中，等待下一次的轮询；
 
 
+MQClientAPIImpl.java   客户端发送请求的地方（调用NettyRemotingClient）
+*  这里面调用PullCallback回调
+
+
+ConsumeMessageService
+* 实现所谓的"Push-被动"消费机制；从Broker拉取的消息后，封装成ConsumeRequest提交给ConsumeMessageSerivce，此service负责回调用户的Listener消费消息；

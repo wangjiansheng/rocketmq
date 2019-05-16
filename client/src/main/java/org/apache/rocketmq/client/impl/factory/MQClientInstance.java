@@ -930,6 +930,7 @@ public class MQClientInstance {
     }
 
     public void doRebalance() {
+        log.debug("循环consumerTable 执行 doRebalance.");
         for (Map.Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
             MQConsumerInner impl = entry.getValue();
             if (impl != null) {
