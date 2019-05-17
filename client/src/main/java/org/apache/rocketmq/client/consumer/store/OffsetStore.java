@@ -16,12 +16,13 @@
  */
 package org.apache.rocketmq.client.consumer.store;
 
-import java.util.Map;
-import java.util.Set;
 import org.apache.rocketmq.client.exception.MQBrokerException;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.remoting.exception.RemotingException;
+
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Offset store interface
@@ -40,16 +41,18 @@ public interface OffsetStore {
     /**
      * Get offset from local storage
      *
-     * @return The fetched offset
+     * @return The fetched offset 读取消费进度类型
      */
     long readOffset(final MessageQueue mq, final ReadOffsetType type);
 
     /**
+     * 持久化消费进度。将消费进度写入文件
      * Persist all offsets,may be in local storage or remote name server
      */
     void persistAll(final Set<MessageQueue> mqs);
 
     /**
+     * 持久化消费进度。将消费进度写入文件
      * Persist the offset,may be in local storage or remote name server
      */
     void persist(final MessageQueue mq);

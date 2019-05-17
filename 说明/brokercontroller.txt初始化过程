@@ -1,0 +1,16 @@
+初始化过程一共做如下几件事情：
+
+    从持久化文件中加载数据，包括topic配置数据，consumer offset数据，consumer订阅配置数据和过滤配置等等
+
+    初始化messageStore，MessageStore中commitLog、ConsumeQueue和index文件都是通过内存映射文件的方式来读写的。
+所以初始化的时候会做文件映射的初始化
+
+    初始化Netty Server，Broker会同时监听两个端口，默认是10911和10909，
+其中10909只处理Producer的消息发送请求，所以broker上称为fastServer。客户端称之为VIP Channel
+
+    注册请求的processor
+    初始化一些定时任务，包括记录日志、consumer offset持久化、consume延迟检查、
+更新nameserv地址、slave的配置数据同步等启动
+
+    启动的过程在BrokerController.start()方法中实现
+

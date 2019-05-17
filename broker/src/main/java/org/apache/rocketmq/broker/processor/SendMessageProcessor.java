@@ -54,7 +54,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 处理消息
+ * 处理消息 接收Producer发来的消息，调用存储模块存储
  */
 public class SendMessageProcessor extends AbstractSendMessageProcessor implements NettyRequestProcessor {
 

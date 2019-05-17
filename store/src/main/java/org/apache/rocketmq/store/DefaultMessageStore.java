@@ -1773,6 +1773,10 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 负责读取CommitLog文件中的消息，分
+     * 发给ConsumeQueue和IndexService构建Queue和索引文件
+     */
     class ReputMessageService extends ServiceThread {
 
         private volatile long reputFromOffset = 0;

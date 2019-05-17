@@ -16,14 +16,20 @@
  */
 package org.apache.rocketmq.store;
 
-import java.io.File;
-import java.nio.ByteBuffer;
-import java.util.List;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
 
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.util.List;
+
+/**
+ * 按topic和queue存储消息，相同topic和queue的消息存储在一起，内容是commitLog的offset
+ * 。consumer是按照queue来拉取消息的
+ * ，所以都是先读取consumeQueue拿到offset的列表，然后到commitLog读取消息详情
+ */
 public class ConsumeQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 

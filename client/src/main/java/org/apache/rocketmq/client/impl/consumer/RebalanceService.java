@@ -21,6 +21,17 @@ import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.ServiceThread;
 import org.apache.rocketmq.logging.InternalLogger;
 
+/**
+ * ：均衡消息队列服务，负责分配当前 Consumer
+ * 可消费的消息队列( MessageQueue )。
+ *
+ * 目前有三种情况情况下触发：
+ *
+ * 如 第run() 等待超时，每 20s 调用一次。
+ * PushConsumer 启动时，DefaultMQPushConsumerImpl#doRebalance
+ * Broker 通知 Consumer 加入 或 移除时，Consumer 响应通知，调用 rebalanceService#wakeup(...) 触发。
+ *
+ */
 public class RebalanceService extends ServiceThread {
     private static long waitInterval =
         Long.parseLong(System.getProperty(

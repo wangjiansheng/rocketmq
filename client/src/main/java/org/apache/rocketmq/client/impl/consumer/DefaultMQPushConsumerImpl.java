@@ -71,7 +71,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
      */
     private static final long PULL_TIME_DELAY_MILLS_WHEN_EXCEPTION = 3000;
     /**
-     * Flow control interval
+     * Flow control interval 流控制时间间隔
      */
     private static final long PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL = 50;
     /**
@@ -213,6 +213,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         long cachedMessageSizeInMiB = processQueue.getMsgSize().get() / (1024 * 1024);
 
         if (cachedMessageCount > this.defaultMQPushConsumer.getPullThresholdForQueue()) {
+            //PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL :流控制时间间隔
             this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL);
             if ((queueFlowControlTimes++ % 1000) == 0) {
                 log.warn(
@@ -327,6 +328,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
                             break;
                         case NO_NEW_MSG:
+                            log.debug("pushConsumer 拉取消息返回 NO_NEW_MSG time:{}",System.currentTimeMillis()/1000);
                             pullRequest.setNextOffset(pullResult.getNextBeginOffset());
 
                             DefaultMQPushConsumerImpl.this.correctTagsOffset(pullRequest);
@@ -420,6 +422,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 commitOffsetValue,
                 //作用是设置Broker的最长阻塞时间，默认为15秒，前提是没有消息的情况下，有消息会立刻返回；
                 BROKER_SUSPEND_MAX_TIME_MILLIS,
+                //超时时间
                 CONSUMER_TIMEOUT_MILLIS_WHEN_SUSPEND,
                 CommunicationMode.ASYNC,
                 pullCallback

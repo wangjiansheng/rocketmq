@@ -38,6 +38,9 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Store all metadata downtime for recovery, data protection reliability
+ *
+ *消息详情存储，同一个broker上的所有消息都保存在一起，每条消息保存后都会有一个offset
+ *
  */
 public class CommitLog {
     // Message's MAGIC CODE daa320a7

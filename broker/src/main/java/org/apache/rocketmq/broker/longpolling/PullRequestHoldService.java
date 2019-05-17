@@ -30,6 +30,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * 对于PushConsumer，当读取的时候没有发现消息，
+ * 该类会暂时hold住请求，当有新的消息到达的时候，
+ * 再回复请求。
+ */
 public class PullRequestHoldService extends ServiceThread {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final String TOPIC_QUEUEID_SEPARATOR = "@";
@@ -45,6 +50,7 @@ public class PullRequestHoldService extends ServiceThread {
     /**
      * 将需要hold处理的PullRequest放入到一个ConcurrentHashMap中
      * ，等待被检查；具体的检查代码在checkHoldRequest中：
+     * 添加需要hold的请求
      *
      * @param topic
      * @param queueId
@@ -80,15 +86,24 @@ public class PullRequestHoldService extends ServiceThread {
             //具体检查哪些就是在ResponseCode.PULL_NOT_FOUND中调用的suspendPullRequest方法
             //例如PullMessageProcessor中调用了的
             try {
+                //检查是否开启长轮询
                 if (this.brokerController.getBrokerConfig().isLongPollingEnable()) {
                     this.waitForRunning(5 * 1000);
                 } else {
+                    //private long shortPollingTimeMills = 1000;
                     this.waitForRunning(this.brokerController.getBrokerConfig().getShortPollingTimeMills());
                 }
 
+                //当前时间
                 long beginLockTimestamp = this.systemClock.now();
+                /**
+                 * 此方法用来获取指定messageQueue下最大的offset
+                 * ，然后用来和当前的offset来比较，来确定是否有新的消息到来；
+                 * 往下看notifyMessageArriving方法
+                 */
                 this.checkHoldRequest();
                 long costTime = this.systemClock.now() - beginLockTimestamp;
+                //用时时间
                 if (costTime > 5 * 1000) {
                     log.info("[NOTIFYME] check hold request cost {} ms.", costTime);
                 }
@@ -137,6 +152,7 @@ public class PullRequestHoldService extends ServiceThread {
      * 此方法不光在PullRequestHoldService服务类中循环调用检查，
      * 同时在DefaultMessageStore中消息被存储的时候调用；
      * 其实就是主动检查和被动通知两种方式。
+     *
      * @param topic
      * @param queueId
      * @param maxOffset

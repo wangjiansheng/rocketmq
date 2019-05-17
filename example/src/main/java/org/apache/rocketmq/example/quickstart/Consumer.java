@@ -21,8 +21,11 @@ import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.client.exception.MQClientException;
+import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.apache.rocketmq.common.message.MessageExt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -30,8 +33,11 @@ import java.util.List;
  * This example shows how to subscribe and consume messages using providing {@link DefaultMQPushConsumer}.
  */
 public class Consumer {
-
+    private final static Logger logger = LoggerFactory.getLogger(Consumer.class);
     public static void main(String[] args) throws InterruptedException, MQClientException {
+        System.setProperty(ClientLogger.CLIENT_LOG_USESLF4J, "true");
+
+
 
         /*
          * Instantiate with specified consumer group name.
@@ -80,7 +86,7 @@ public class Consumer {
          *  Launch the consumer instance.
          */
         consumer.start();
-
+        logger.info("3456363463636");
         System.out.printf("Consumer Started.%n");
     }
 }

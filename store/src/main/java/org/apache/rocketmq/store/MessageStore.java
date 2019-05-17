@@ -16,16 +16,20 @@
  */
 package org.apache.rocketmq.store;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Set;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageExtBatch;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Set;
+
 /**
  * This class defines contracting interfaces to implement, allowing third-party vendor to use customized message store.
+ *
+ *消息存储接口，这个是Broker的核心，提供消息读写。
+ *
  */
 public interface MessageStore {
 

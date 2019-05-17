@@ -64,7 +64,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * 接收客户端的pull请求
+ * 接收客户端的pull请求  接受Consumer的消息Pull请求，返回符合条件的消息
  */
 public class PullMessageProcessor implements NettyRequestProcessor {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);

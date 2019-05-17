@@ -88,7 +88,7 @@ public interface MQPushConsumer extends MQConsumer {
 
     /**
      * Unsubscribe consumption some topic
-     *
+     *移除topic
      * @param topic message topic
      */
     void unsubscribe(final String topic);
