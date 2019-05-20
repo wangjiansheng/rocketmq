@@ -30,6 +30,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 消息编码
+ */
 public class MessageDecoder {
     public final static int MSG_ID_LENGTH = 8 + 8;
 
@@ -77,6 +80,12 @@ public class MessageDecoder {
         return UtilAll.bytes2string(byteBuffer.array());
     }
 
+    /**
+     * 消息id解析
+     * @param msgId
+     * @return
+     * @throws UnknownHostException
+     */
     public static MessageId decodeMessageId(final String msgId) throws UnknownHostException {
         SocketAddress address;
         long offset;

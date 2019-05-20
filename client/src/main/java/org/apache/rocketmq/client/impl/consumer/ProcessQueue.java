@@ -32,7 +32,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * 队列消费快照
+ * 队列消费快照   正在被消费的队列
  * Queue consumption snapshot
  */
 public class ProcessQueue {

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.rocketmq.example.broadcast;
+package org.apache.rocketmq.example.quickstart;
 
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
@@ -24,35 +24,69 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.apache.rocketmq.common.message.MessageExt;
-import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public class PushConsumer {
-
+/**
+ * This example shows how to subscribe and consume messages using providing {@link DefaultMQPushConsumer}.
+ */
+public class Consumer2 {
+    private final static Logger logger = LoggerFactory.getLogger(Consumer2.class);
     public static void main(String[] args) throws InterruptedException, MQClientException {
         System.setProperty(ClientLogger.CLIENT_LOG_USESLF4J, "true");
 
 
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("please_rename_unique_group_name_1");
 
+        /*
+         * Instantiate with specified consumer group name.
+         */
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("aaa");
+
+        /*
+         * Specify name server addresses.
+         * <p/>
+         *
+         * Alternatively, you may specify name server addresses via exporting environmental variable: NAMESRV_ADDR
+         * <pre>
+         * {@code
+         * consumer.setNamesrvAddr("name-server1-ip:9876;name-server2-ip:9876");
+         * }
+         * </pre>
+         */
+
+        /*
+         * Specify where to start in case the specified consumer group is a brand new one.
+         */
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
         consumer.setNamesrvAddr("127.0.0.1:9876");
-        consumer.setMessageModel(MessageModel.BROADCASTING);
+        /*
+         * Subscribe one more more topics to consume.
+         */
+        consumer.subscribe("TopicTest", "*");
 
-        consumer.subscribe("TopicTest", "TagA || TagC || TagD");
-
+        /*
+         *  Register callback to execute on arrival of messages fetched from brokers.
+         */
         consumer.registerMessageListener(new MessageListenerConcurrently() {
 
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs,
-                ConsumeConcurrentlyContext context) {
-                System.out.printf("%s Receive New Messages: %s %n", Thread.currentThread().getName(), msgs);
+
+                                                            ConsumeConcurrentlyContext context) {
+                System.out.printf("%s Receive New Messages: %s %n",
+                        Thread.currentThread().getName(), msgs);
+                System.out.println(System.currentTimeMillis()/1000);
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
         });
 
+        /*
+         *  Launch the consumer instance.
+         */
         consumer.start();
-        System.out.printf("Broadcast Consumer Started.%n");
+        logger.info("3456363463636");
+        System.out.printf("Consumer Started.%n");
     }
 }

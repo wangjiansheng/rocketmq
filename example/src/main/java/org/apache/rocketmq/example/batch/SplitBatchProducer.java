@@ -17,18 +17,28 @@
 
 package org.apache.rocketmq.example.batch;
 
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import org.apache.rocketmq.client.log.ClientLogger;
+import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.client.producer.SendResult;
+import org.apache.rocketmq.common.message.Message;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.rocketmq.client.producer.DefaultMQProducer;
-import org.apache.rocketmq.common.message.Message;
 
 public class SplitBatchProducer {
 
     public static void main(String[] args) throws Exception {
 
+        System.setProperty(ClientLogger.CLIENT_LOG_USESLF4J, "true");
+
+
+
         DefaultMQProducer producer = new DefaultMQProducer("BatchProducerGroupName");
+        producer.setNamesrvAddr("127.0.0.1:9876");
         producer.start();
 
         //large batch
@@ -42,7 +52,8 @@ public class SplitBatchProducer {
         ListSplitter splitter = new ListSplitter(messages);
         while (splitter.hasNext()) {
             List<Message> listItem = splitter.next();
-            producer.send(listItem);
+            SendResult sendResult=   producer.send(listItem);
+            System.out.println(JSONObject.toJSONString(sendResult,SerializerFeature.PrettyFormat));
         }
     }
 

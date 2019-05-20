@@ -17,25 +17,35 @@
 
 package org.apache.rocketmq.example.batch;
 
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import org.apache.rocketmq.client.log.ClientLogger;
+import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.client.producer.SendResult;
+import org.apache.rocketmq.common.message.Message;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.rocketmq.client.producer.DefaultMQProducer;
-import org.apache.rocketmq.common.message.Message;
 
 public class SimpleBatchProducer {
 
     public static void main(String[] args) throws Exception {
+        System.setProperty(ClientLogger.CLIENT_LOG_USESLF4J, "true");
+
         DefaultMQProducer producer = new DefaultMQProducer("BatchProducerGroupName");
+        producer.setNamesrvAddr("127.0.0.1:9876");
         producer.start();
 
         //If you just send messages of no more than 1MiB at a time, it is easy to use batch
         //Messages of the same batch should have: same topic, same waitStoreMsgOK and no schedule support
         String topic = "BatchTest";
         List<Message> messages = new ArrayList<>();
-        messages.add(new Message(topic, "Tag", "OrderID001", "Hello world 0".getBytes()));
-        messages.add(new Message(topic, "Tag", "OrderID002", "Hello world 1".getBytes()));
-        messages.add(new Message(topic, "Tag", "OrderID003", "Hello world 2".getBytes()));
+        messages.add(new Message(topic, "TagA", "OrderID001", "Hello world 0".getBytes()));
+        messages.add(new Message(topic, "TagB", "OrderID002", "Hello world 1".getBytes()));
+        messages.add(new Message(topic, "TagC", "OrderID003", "Hello world 2".getBytes()));
 
-        producer.send(messages);
+        SendResult sendResult = producer.send(messages);
+        System.out.println(JSONObject.toJSONString(sendResult,SerializerFeature.PrettyFormat));
+        producer.shutdown();
     }
 }

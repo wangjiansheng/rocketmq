@@ -189,15 +189,24 @@ public class TransactionalMessageBridge {
     public PutMessageResult putHalfMessage(MessageExtBrokerInner messageInner) {
         return store.putMessage(parseHalfMessageInner(messageInner));
     }
-
+    /**
+     * 将消息进行转换，最终将消息存储到统一处理事务的Topic中：RMQ_SYS_TRANS_HALF_TOPIC
+     * @return 转换后的消息
+     */
     private MessageExtBrokerInner parseHalfMessageInner(MessageExtBrokerInner msgInner) {
+        //将消息所属真正Topic存储到消息的properties中
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_TOPIC, msgInner.getTopic());
+        //将消息应该写的queue存储到消息的properties中
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_QUEUE_ID,
             String.valueOf(msgInner.getQueueId()));
+        //设置事务消息标志：Unknow，因为现在还没有接收到该事务消息的状态
         msgInner.setSysFlag(
             MessageSysFlag.resetTransactionValue(msgInner.getSysFlag(), MessageSysFlag.TRANSACTION_NOT_TYPE));
+        //设置消息存储到的Topic:统一事务消息Topic:RMQ_SYS_TRANS_HALF_TOPIC
         msgInner.setTopic(TransactionalMessageUtil.buildHalfTopic());
+        //所有事务消息存放在该Topic的第一个队列里
         msgInner.setQueueId(0);
+        //将其余该消息的属性统一存放进来
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgInner.getProperties()));
         return msgInner;
     }

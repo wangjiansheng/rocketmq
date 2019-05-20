@@ -905,6 +905,7 @@ public class CommitLog {
         return diff;
     }
 
+    //消息刷盘
     abstract class FlushCommitLogService extends ServiceThread {
         protected static final int RETRY_TIMES_OVER = 10;
     }
@@ -922,25 +923,33 @@ public class CommitLog {
         public void run() {
             CommitLog.log.info(this.getServiceName() + " service started");
             while (!this.isStopped()) {
-                int interval = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitIntervalCommitLog();
+                // commitIntervalCommitLog = 200; 间隔
+                int interval = CommitLog.this.defaultMessageStore.getMessageStoreConfig()
+                        .getCommitIntervalCommitLog();
 
-                int commitDataLeastPages = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitCommitLogLeastPages();
-
+                //将数据提交到文件时要提交多少页  默认4
+                int commitDataLeastPages = CommitLog.this.defaultMessageStore.
+                        getMessageStoreConfig().getCommitCommitLogLeastPages();
+                //commitCommitLogThoroughInterval = 200;
                 int commitDataThoroughInterval =
-                    CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitCommitLogThoroughInterval();
+                    CommitLog.this.defaultMessageStore.getMessageStoreConfig().
+                            getCommitCommitLogThoroughInterval();
 
                 long begin = System.currentTimeMillis();
                 if (begin >= (this.lastCommitTimestamp + commitDataThoroughInterval)) {
                     this.lastCommitTimestamp = begin;
                     commitDataLeastPages = 0;
+
                 }
 
                 try {
+                    //commitDataLeastPages =0 将不会写文件
                     boolean result = CommitLog.this.mappedFileQueue.commit(commitDataLeastPages);
                     long end = System.currentTimeMillis();
                     if (!result) {
                         this.lastCommitTimestamp = end; // result = false means some data committed.
                         //now wake up flush thread.
+                        //现在唤醒刷新线程
                         flushCommitLogService.wakeup();
                     }
 

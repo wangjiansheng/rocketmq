@@ -17,7 +17,6 @@
 
 package org.apache.rocketmq.example.filter;
 
-import java.util.List;
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.MessageSelector;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
@@ -25,12 +24,14 @@ import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.common.message.MessageExt;
 
+import java.util.List;
+
 public class SqlFilterConsumer {
 
     public static void main(String[] args) throws Exception {
 
         DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("please_rename_unique_group_name");
-
+        consumer.setNamesrvAddr("127.0.0.1:9876");
         // Don't forget to set enablePropertyFilter=true in broker
         consumer.subscribe("SqlFilterTest",
             MessageSelector.bySql("(TAGS is not null and TAGS in ('TagA', 'TagB'))" +

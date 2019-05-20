@@ -12,7 +12,7 @@ public class RocketMsgIdRevers {
     public static void main(String[] args) {
 
        // byte[] dest = UtilAll.string2bytes("AC101E9200002A9F000000000121C63A");
-        byte[] dest =string2bytes("AC101E9200002A9F000000000121C63A");
+        byte[] dest =string2bytes("AC101E9200002A9F0000000017F68262");
         //ip的long值
         Long lvalue = 0l;
         lvalue += ((long) (dest[0] & 0xFF) << 24);

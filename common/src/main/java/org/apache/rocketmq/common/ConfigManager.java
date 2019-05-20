@@ -86,8 +86,8 @@ public abstract class ConfigManager {
         if (jsonString != null) {
             String fileName = this.configFilePath();
             try {
-                log.debug(jsonString);
-                log.debug("保存fileName:"+fileName);
+                //log.debug(jsonString);
+                //log.debug("保存fileName:"+fileName);
                 MixAll.string2File(jsonString, fileName);
             } catch (IOException e) {
                 log.error("persist file " + fileName + " exception", e);

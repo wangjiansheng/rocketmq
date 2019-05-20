@@ -1,0 +1,32 @@
+RocketMQ提供了两种顺序级别：
+
+普通顺序消息：Producer将相关联的消息发送到相同的消息队列。
+
+严格顺序消息：在 普通顺序消息 的基础上，Consumer严格顺序消费。
+
+
+Producer顺序
+普通顺序消息是使用MessageQueueSelector来实现的：
+
+SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
+    @Override
+    public MessageQueue select(List<MessageQueue> mqs, Message msg, Object arg) {
+        Integer id = (Integer) arg;
+        int index = id % mqs.size();
+        return mqs.get(index);
+    }
+}, orderId);
+以上的例子来自rocketmq的官方文档，把orderId作为选择队列的条件，让相同的orderId进入相同的队列。
+
+这里的源码就不看了，就是使用我们提供的MessageQueueSelector来选择一个我们想要的队列，然后发送消息。
+
+Consumer顺序
+consumer在严格顺序消费时，通过三把锁保证严格顺序消费：
+
+Broker消息队列锁（分布式锁）：集群模式下，Consumer从Broker获得该锁后，才能进行消息拉取、消费。广播模式下，Consumer无需该锁（对于广播模式的Consumer来说，所有的队列在自己眼里就是属于自己的，所以不需要一个锁）。
+
+Consumer消息队列锁（本地锁）：Consumer获得该锁才能操作消息队列。
+
+Consumer消息处理队列消费锁（本地锁） ：Consumer获得该锁才能消费消息队列
+
+RocketMQ的消息拉取之前已经说过了是通过一个队列，不停地从里面去PullRequest来进行消息拉取的。初始化一条队列的拉取是在rebalance过程中进行的，我们看一下updateProcessQueueTableInRebalance：

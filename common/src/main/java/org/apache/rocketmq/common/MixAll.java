@@ -16,33 +16,20 @@
  */
 package org.apache.rocketmq.common;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.rocketmq.common.annotation.ImportantField;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.help.FAQUrl;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
+
+import java.io.*;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MixAll {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
@@ -89,9 +76,19 @@ public class MixAll {
     public static final String DEFAULT_TRACE_REGION_ID = "DefaultRegion";
     public static final String CONSUME_CONTEXT_TYPE = "ConsumeContextType";
 
+    //所有的事务消息统一写入Half Topic
     public static final String RMQ_SYS_TRANS_HALF_TOPIC = "RMQ_SYS_TRANS_HALF_TOPIC";
     public static final String RMQ_SYS_TRACE_TOPIC = "RMQ_SYS_TRACE_TOPIC";
+    //若提交了Commit或Rollback状态，Broker则会将该消息写入到Op Topic,
+    // 该Topic的作用主要记录已经Commit或Rollback的prepare消息
+    //Broker利用Half Topic和Op Topic计算出需要回查的事务消息。如果是commit消息，
+    // broker还会将消息从Half取出来存储到真正的Topic里，
+    // 从而消费者可以正常进行消费，如果是Rollback则不进行其他操作
+    //如果本地事务执行超时或返回了Unknow状态，则broker会进行事务回查。若生产者执行本地事务超过6s
+    // 则进行第一次事务回查，总共回查15次，后续回查间隔时间是60s
+    // ，broker在每次回查时会将消息再在Half Topic写一次。回查次数和时间间隔都是可配置的
     public static final String RMQ_SYS_TRANS_OP_HALF_TOPIC = "RMQ_SYS_TRANS_OP_HALF_TOPIC";
+    //默认消费者是CID_RMQ_SYS_TRANS，
     public static final String CID_SYS_RMQ_TRANS = "CID_RMQ_SYS_TRANS";
 
     public static String getWSAddr() {

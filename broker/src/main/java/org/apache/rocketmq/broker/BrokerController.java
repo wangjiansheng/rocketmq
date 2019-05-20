@@ -467,6 +467,7 @@ public class BrokerController {
     }
 
     private void initialTransaction() {
+        //有点像spi
         this.transactionalMessageService = ServiceProvider.loadClass(ServiceProvider.TRANSACTION_SERVICE_ID, TransactionalMessageService.class);
         if (null == this.transactionalMessageService) {
             this.transactionalMessageService = new TransactionalMessageServiceImpl(new TransactionalMessageBridge(this, this.getMessageStore()));
@@ -647,8 +648,12 @@ public class BrokerController {
         return this.headSlowTimeMills(this.endTransactionThreadPoolQueue);
     }
 
+    int i=10;
     public void printWaterMark() {
-        log.debug("打印各队列长度");
+        if (i < 10) {
+            log.debug("打印各队列长度");
+            i++;
+        }
        // LOG_WATER_MARK.info("[WATERMARK] Send Queue Size: {} SlowTimeMills: {}", this.sendThreadPoolQueue.size(), headSlowTimeMills4SendThreadPoolQueue());
         //LOG_WATER_MARK.info("[WATERMARK] Pull Queue Size: {} SlowTimeMills: {}", this.pullThreadPoolQueue.size(), headSlowTimeMills4PullThreadPoolQueue());
        // LOG_WATER_MARK.info("[WATERMARK] Query Queue Size: {} SlowTimeMills: {}", this.queryThreadPoolQueue.size(), headSlowTimeMills4QueryThreadPoolQueue());
@@ -850,6 +855,7 @@ public class BrokerController {
         }
 
         if (!messageStoreConfig.isEnableDLegerCommitLog()) {
+            //事物 transactionalMessageCheckService
             startProcessorByHa(messageStoreConfig.getBrokerRole());
             handleSlaveSynchronize(messageStoreConfig.getBrokerRole());
         }
@@ -1195,8 +1201,10 @@ public class BrokerController {
         log.info("Finish to change to master brokerName={}", brokerConfig.getBrokerName());
     }
 
+    //事物 transactionalMessageCheckService
     private void startProcessorByHa(BrokerRole role) {
         if (BrokerRole.SLAVE != role) {
+            log.debug("事物回调定服务启动");
             if (this.transactionalMessageCheckService != null) {
                 this.transactionalMessageCheckService.start();
             }

@@ -102,6 +102,7 @@ public class AdminBrokerProcessor implements NettyRequestProcessor {
             case RequestCode.GET_BROKER_RUNTIME_INFO:
                 return this.getBrokerRuntimeInfo(ctx, request);
             case RequestCode.LOCK_BATCH_MQ:
+                log.debug("默认每隔20s执行一次 lockBatchMQ ");
                 return this.lockBatchMQ(ctx, request);
             case RequestCode.UNLOCK_BATCH_MQ:
                 return this.unlockBatchMQ(ctx, request);

@@ -127,17 +127,22 @@ public abstract class RebalanceImpl {
         return result;
     }
 
+    //锁有过期时间：
     public boolean lock(final MessageQueue mq) {
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
         if (findBrokerResult != null) {
+            //获取锁定队列的条件其实有三个：consumerGroup、mQClientFactory.getClientId()
+            //和MessageQueue。这里是根据自己的clientId去获取的远端锁定队列
             LockBatchRequestBody requestBody = new LockBatchRequestBody();
             requestBody.setConsumerGroup(this.consumerGroup);
             requestBody.setClientId(this.mQClientFactory.getClientId());
             requestBody.getMqSet().add(mq);
 
             try {
+                // 请求Broker获得指定消息队列的分布式锁
                 Set<MessageQueue> lockedMq =
                         this.mQClientFactory.getMQClientAPIImpl().lockBatchMQ(findBrokerResult.getBrokerAddr(), requestBody, 1000);
+                // 获取远端的锁定的队列，然后锁住本地的processQueue
                 for (MessageQueue mmqq : lockedMq) {
                     ProcessQueue processQueue = this.processQueueTable.get(mmqq);
                     if (processQueue != null) {
@@ -145,7 +150,7 @@ public abstract class RebalanceImpl {
                         processQueue.setLastLockTimestamp(System.currentTimeMillis());
                     }
                 }
-
+                //如果远端锁定的队列里包含要锁的这个队列，则返回成功
                 boolean lockOK = lockedMq.contains(mq);
                 log.info("the message queue lock {}, {} {}",
                         lockOK ? "OK" : "Failed",
@@ -366,6 +371,8 @@ public abstract class RebalanceImpl {
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
         for (MessageQueue mq : mqSet) {
             if (!this.processQueueTable.containsKey(mq)) {
+                //如果是严格顺序，则尝试锁住远端的队列，
+                // 如果没锁住，下次rebalance的时候还会尝试获取锁，但是本次就continue掉了
                 if (isOrder && !this.lock(mq)) {
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     continue;
@@ -379,6 +386,7 @@ public abstract class RebalanceImpl {
                     if (pre != null) {
                         log.info("doRebalance, {}, mq already exists, {}", consumerGroup, mq);
                     } else {
+                        //初始化拉取操作
                         log.info("doRebalance, {}, add a new mq, {}", consumerGroup, mq);
                         PullRequest pullRequest = new PullRequest();
                         pullRequest.setConsumerGroup(consumerGroup);
@@ -393,7 +401,7 @@ public abstract class RebalanceImpl {
                 }
             }
         }
-
+        //拉取
         this.dispatchPullRequest(pullRequestList);
 
         return changed;

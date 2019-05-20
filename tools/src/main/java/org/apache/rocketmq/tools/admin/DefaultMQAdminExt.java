@@ -16,11 +16,6 @@
  */
 package org.apache.rocketmq.tools.admin;
 
-import java.io.UnsupportedEncodingException;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
 import org.apache.rocketmq.client.ClientConfig;
 import org.apache.rocketmq.client.QueryResult;
 import org.apache.rocketmq.client.exception.MQBrokerException;
@@ -32,29 +27,18 @@ import org.apache.rocketmq.common.admin.RollbackStats;
 import org.apache.rocketmq.common.admin.TopicStatsTable;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageQueue;
-import org.apache.rocketmq.common.protocol.body.BrokerStatsData;
-import org.apache.rocketmq.common.protocol.body.ClusterInfo;
-import org.apache.rocketmq.common.protocol.body.ConsumeMessageDirectlyResult;
-import org.apache.rocketmq.common.protocol.body.ConsumeStatsList;
-import org.apache.rocketmq.common.protocol.body.ConsumerConnection;
-import org.apache.rocketmq.common.protocol.body.ConsumerRunningInfo;
-import org.apache.rocketmq.common.protocol.body.GroupList;
-import org.apache.rocketmq.common.protocol.body.KVTable;
-import org.apache.rocketmq.common.protocol.body.ProducerConnection;
-import org.apache.rocketmq.common.protocol.body.QueryConsumeQueueResponseBody;
-import org.apache.rocketmq.common.protocol.body.QueueTimeSpan;
-import org.apache.rocketmq.common.protocol.body.SubscriptionGroupWrapper;
-import org.apache.rocketmq.common.protocol.body.TopicConfigSerializeWrapper;
-import org.apache.rocketmq.common.protocol.body.TopicList;
+import org.apache.rocketmq.common.protocol.body.*;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.apache.rocketmq.common.subscription.SubscriptionGroupConfig;
 import org.apache.rocketmq.remoting.RPCHook;
-import org.apache.rocketmq.remoting.exception.RemotingCommandException;
-import org.apache.rocketmq.remoting.exception.RemotingConnectException;
-import org.apache.rocketmq.remoting.exception.RemotingException;
-import org.apache.rocketmq.remoting.exception.RemotingSendRequestException;
-import org.apache.rocketmq.remoting.exception.RemotingTimeoutException;
+import org.apache.rocketmq.remoting.exception.*;
 import org.apache.rocketmq.tools.admin.api.MessageTrack;
+
+import java.io.UnsupportedEncodingException;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 public class DefaultMQAdminExt extends ClientConfig implements MQAdminExt {
     private final DefaultMQAdminExtImpl defaultMQAdminExtImpl;
@@ -117,6 +101,7 @@ public class DefaultMQAdminExt extends ClientConfig implements MQAdminExt {
     public long earliestMsgStoreTime(MessageQueue mq) throws MQClientException {
         return defaultMQAdminExtImpl.earliestMsgStoreTime(mq);
     }
+
 
     @Override
     public MessageExt viewMessage(
@@ -458,8 +443,24 @@ public class DefaultMQAdminExt extends ClientConfig implements MQAdminExt {
         return this.defaultMQAdminExtImpl.getAllTopicGroup(brokerAddr, timeoutMillis);
     }
 
-    /* (non-Javadoc)
-     * @see org.apache.rocketmq.client.MQAdmin#queryMessageByUniqKey(java.lang.String, java.lang.String)
+    /**
+     *这里topic参数是RMQ_SYS_TRANS_HALF_TOPIC ，该topic是真正的Half Topic，
+     * msgId传发送prepare消息获取的uniqId，这样可以获取prepare消息在Half Topic真正的offsetMsgId，
+     *
+     * opic是RMQ_SYS_TRANS_OP_HALF_TOPIC，这样可以获取Op Half Topic
+     * 中该事务消息的状态，如果存在说明prepare消息已处理，否则可能仍在回查中或已被丢弃
+     *
+     * 真正Topic继续调用viewMessage(String topic, String msgId)方法获取消息真正的信息，
+     * 如果存在说明消息已被投递，否则该事务消息已被回滚。只通过Op Half Topic是不能确定消息状态的
+     * ，这里的sysFlag被设置0，sysFlag是用于确定事务消息状态。
+
+     * @param topic
+     * @param msgId
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     * @throws MQClientException
      */
     @Override
     public MessageExt viewMessage(String topic, String msgId)

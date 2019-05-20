@@ -19,6 +19,9 @@ package org.apache.rocketmq.common.subscription;
 
 import org.apache.rocketmq.common.MixAll;
 
+/**
+ *消费者订阅关系
+ */
 public class SubscriptionGroupConfig {
 
     private String groupName;
@@ -32,6 +35,7 @@ public class SubscriptionGroupConfig {
 
     private int retryMaxTimes = 16;
 
+    //0代表mster  大于0表示salve
     private long brokerId = MixAll.MASTER_ID;
 
     private long whichBrokerWhenConsumeSlowly = 1;

@@ -54,7 +54,8 @@ public class DefaultMessageStore implements MessageStore {
     private final CommitLog commitLog;
     // topic和queueId唯一确定一个consumeQueue
 // put：
-// 1. 在getMessage的时候会调用findConsumeQueue，如果consumeQueueTable不存在对应的（topic，queueId），则新建一个加入table
+// 1. 在getMessage的时候会调用findConsumeQueue，
+// 如果consumeQueueTable不存在对应的（topic，queueId），则新建一个加入table
 // 2. 在启动的时候load
     private final ConcurrentMap<String/* topic */, ConcurrentMap<Integer/* queueId */, ConsumeQueue>> consumeQueueTable;
     /**

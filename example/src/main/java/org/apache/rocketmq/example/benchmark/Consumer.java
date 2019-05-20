@@ -17,12 +17,6 @@
 
 package org.apache.rocketmq.example.benchmark;
 
-import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -38,10 +32,19 @@ import org.apache.rocketmq.common.filter.ExpressionType;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.srvutil.ServerUtil;
 
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicLong;
+
 public class Consumer {
 
     public static void main(String[] args) throws MQClientException, IOException {
-        Options options = ServerUtil.buildCommandlineOptions(new Options());
+        //System.setProperty(ClientLogger.CLIENT_LOG_USESLF4J, "true");
+
+     Options options = ServerUtil.buildCommandlineOptions(new Options());
         CommandLine commandLine = ServerUtil.parseCmdLine("benchmarkConsumer", args, buildCommandlineOptions(options), new PosixParser());
         if (null == commandLine) {
             System.exit(-1);
@@ -104,7 +107,7 @@ public class Consumer {
 
         DefaultMQPushConsumer consumer = new DefaultMQPushConsumer(group);
         consumer.setInstanceName(Long.toString(System.currentTimeMillis()));
-
+        consumer.setNamesrvAddr("127.0.0.1:9876");
         if (filterType == null || expression == null) {
             consumer.subscribe(topic, "*");
         } else {

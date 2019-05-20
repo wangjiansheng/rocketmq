@@ -35,7 +35,6 @@ public class SimpleProducer {
 
         messagingAccessPoint.startup();
         System.out.printf("MessagingAccessPoint startup OK%n");
-
         producer.startup();
         System.out.printf("Producer startup OK%n");
 

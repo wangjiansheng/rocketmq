@@ -84,22 +84,28 @@ public class RebalancePushImpl extends RebalanceImpl {
 
     @Override
     public boolean removeUnnecessaryMessageQueue(MessageQueue mq, ProcessQueue pq) {
+        // 同步队列的消费进度并移除
         this.defaultMQPushConsumerImpl.getOffsetStore().persist(mq);
+
         this.defaultMQPushConsumerImpl.getOffsetStore().removeOffset(mq);
+        // 集群模式下并且是严格顺序时，解锁对队列的锁定
         if (this.defaultMQPushConsumerImpl.isConsumeOrderly()
             && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
             try {
+                //尝试锁住本地的queue
                 if (pq.getLockConsume().tryLock(1000, TimeUnit.MILLISECONDS)) {
                     try {
+                        //解锁mq（broker上处理）
                         return this.unlockDelay(mq, pq);
                     } finally {
+                        //解锁本地的processQueue
                         pq.getLockConsume().unlock();
                     }
                 } else {
                     log.warn("[WRONG]mq is consuming, so can not unlock it, {}. maybe hanged for a while, {}",
                         mq,
                         pq.getTryUnlockTimes());
-
+                    //这个process queue正在被消费
                     pq.incTryUnlockTimes();
                 }
             } catch (Exception e) {
@@ -111,8 +117,9 @@ public class RebalancePushImpl extends RebalanceImpl {
         return true;
     }
 
+    //（延迟解锁Broker消息队列锁，当消息处理队列不存在消息，则直接解锁）：
     private boolean unlockDelay(final MessageQueue mq, final ProcessQueue pq) {
-
+//解锁Broker消息队列锁。如果消息处理队列存在剩余消息，则延迟解锁Broker消息队列锁。
         if (pq.hasTempMessage()) {
             log.info("[{}]unlockDelay, begin {} ", mq.hashCode(), mq);
             this.defaultMQPushConsumerImpl.getmQClientFactory().getScheduledExecutorService().schedule(new Runnable() {

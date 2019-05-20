@@ -27,12 +27,13 @@ public class SqlFilterProducer {
     public static void main(String[] args) throws Exception {
 
         DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
-
+        producer.setNamesrvAddr("127.0.0.1:9876");
+        producer.setSendMsgTimeout(1000000);
         producer.start();
 
         String[] tags = new String[] {"TagA", "TagB", "TagC"};
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 100; i++) {
             Message msg = new Message("SqlFilterTest",
                 tags[i % tags.length],
                 ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET)

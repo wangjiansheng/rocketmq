@@ -16,9 +16,10 @@
  */
 package org.apache.rocketmq.store.config;
 
-import java.io.File;
 import org.apache.rocketmq.common.annotation.ImportantField;
 import org.apache.rocketmq.store.ConsumeQueue;
+
+import java.io.File;
 
 public class MessageStoreConfig {
     //The root directory in which the log data is kept
@@ -76,23 +77,30 @@ public class MessageStoreConfig {
     private String deleteWhen = "04";
     private int diskMaxUsedSpaceRatio = 75;
     // The number of hours to keep a log file before deleting it (in hours)
+    //删除日志文件前保存日志文件的小时数(以小时为单位)
     @ImportantField
     private int fileReservedTime = 72;
     // Flow control for ConsumeQueue
+    //ConsumeQueue的流控制
     private int putMsgIndexHightWater = 600000;
     // The maximum size of a single log file,default is 512K
+    //默认情况下，单个日志文件的最大大小为512K
     private int maxMessageSize = 1024 * 1024 * 4;
     // Whether check the CRC32 of the records consumed.
     // This ensures no on-the-wire or on-disk corruption to the messages occurred.
     // This check adds some overhead,so it may be disabled in cases seeking extreme performance.
     private boolean checkCRCOnRecover = true;
     // How many pages are to be flushed when flush CommitLog
+    //刷新提交日志时要刷新多少页
     private int flushCommitLogLeastPages = 4;
     // How many pages are to be committed when commit data to file
+    //将数据提交到文件时要提交多少页
     private int commitCommitLogLeastPages = 4;
     // Flush page size when the disk in warming state
+    //磁盘处于升温状态时刷新页面大小
     private int flushLeastPagesWhenWarmMapedFile = 1024 / 4 * 16;
     // How many pages are to be flushed when flush ConsumeQueue
+    //在刷新ConsumeQueue时要刷新多少页
     private int flushConsumeQueueLeastPages = 2;
     private int flushCommitLogThoroughInterval = 1000 * 10;
     private int commitCommitLogThoroughInterval = 200;

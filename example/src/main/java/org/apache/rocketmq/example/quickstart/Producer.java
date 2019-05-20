@@ -52,7 +52,7 @@ public class Producer {
         producer.setSendMsgTimeout(300000000);
         producer.start();
 
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 1000; i++) {
             try {
 
                 /*
@@ -62,7 +62,7 @@ public class Producer {
                     "TagA" /* Tag */,
                     ("Hello 金欧莱解耦股酒叟更煎熬国家级公安机关进公安局我感觉熬个价格就哦啊无购物功能哦啊个国家外加工啊问哪个 RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
-
+                msg.putUserProperty("SequenceId", String.valueOf(i));
                 /*
                  * Call send message to deliver message to one of brokers.
                  */

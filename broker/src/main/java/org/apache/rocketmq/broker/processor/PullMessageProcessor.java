@@ -200,6 +200,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                 return response;
             }
             if (!ExpressionType.isTagType(subscriptionData.getExpressionType())) {
+                //消息过滤sql
                 consumerFilterData = this.brokerController.getConsumerFilterManager().get(requestHeader.getTopic(),
                     requestHeader.getConsumerGroup());
                 if (consumerFilterData == null) {
@@ -224,6 +225,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             return response;
         }
 
+        //消息过滤器
         MessageFilter messageFilter;
         if (this.brokerController.getBrokerConfig().isFilterSupportRetry()) {
             messageFilter = new ExpressionForRetryMessageFilter(subscriptionData, consumerFilterData,
