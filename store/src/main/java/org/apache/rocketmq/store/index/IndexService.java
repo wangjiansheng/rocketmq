@@ -170,6 +170,7 @@ public class IndexService {
         try {
             this.readWriteLock.readLock().lock();
             if (!this.indexFileList.isEmpty()) {
+                //1、从最新的index文件开始向前找
                 for (int i = this.indexFileList.size(); i > 0; i--) {
                     IndexFile f = this.indexFileList.get(i - 1);
                     boolean lastFile = i == this.indexFileList.size();
@@ -177,9 +178,9 @@ public class IndexService {
                         indexLastUpdateTimestamp = f.getEndTimestamp();
                         indexLastUpdatePhyoffset = f.getEndPhyOffset();
                     }
-
+                    //2、index文件的时间包含了begin和end的全部或者部分
                     if (f.isTimeMatched(begin, end)) {
-
+                        //3、从文件中读取index中的offset
                         f.selectPhyOffset(phyOffsets, buildKey(topic, key), maxNum, begin, end, lastFile);
                     }
 
@@ -234,12 +235,15 @@ public class IndexService {
      * @param req
      */
     public void buildIndex(DispatchRequest req) {
+        //1、获取或者新建当前可写入的index file
         IndexFile indexFile = retryGetAndCreateIndexFile();
         if (indexFile != null) {
+            //2、获取当前indexFile中记录的最大offset
             long endPhyOffset = indexFile.getEndPhyOffset();
             DispatchRequest msg = req;
             String topic = msg.getTopic();
             String keys = msg.getKeys();
+            //3、新来消息是之前的，不应该出现
             if (msg.getCommitLogOffset() < endPhyOffset) {
                 return;
             }
@@ -251,9 +255,10 @@ public class IndexService {
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
                     break;
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE:
+                    //rollback消息不更新index
                     return;
             }
-
+            //4、单条消息
             if (req.getUniqKey() != null) {
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
@@ -261,7 +266,7 @@ public class IndexService {
                     return;
                 }
             }
-
+            //5、多个msg，循环逐个存入
             if (keys != null && keys.length() > 0) {
                 String[] keyset = keys.split(MessageConst.KEY_SEPARATOR);
                 for (int i = 0; i < keyset.length; i++) {
@@ -281,7 +286,15 @@ public class IndexService {
         }
     }
 
+    /**
+     * IndexFile数据写入
+     * @param indexFile
+     * @param msg
+     * @param idxKey
+     * @return
+     */
     private IndexFile putKey(IndexFile indexFile, DispatchRequest msg, String idxKey) {
+        //1、判断index是否已满，已满返回失败，由调用方来处理
         for (boolean ok = indexFile.putKey(idxKey, msg.getCommitLogOffset(), msg.getStoreTimestamp()); !ok; ) {
             log.warn("Index file [" + indexFile.getFileName() + "] is full, trying to create another one");
 

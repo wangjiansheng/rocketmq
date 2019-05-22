@@ -871,6 +871,16 @@ public class DefaultMessageStore implements MessageStore {
         this.cleanCommitLogService.excuteDeleteFilesManualy();
     }
 
+    /**
+     * 通过IndexFile查询消息
+     * 根据MessageKey查询消息的接口
+     * @param topic topic of the message.
+     * @param key message key.
+     * @param maxNum maximum number of the messages possible.
+     * @param begin begin timestamp.
+     * @param end end timestamp.
+     * @return
+     */
     @Override
     public QueryMessageResult queryMessage(String topic, String key, int maxNum, long begin, long end) {
         QueryMessageResult queryMessageResult = new QueryMessageResult();
@@ -878,6 +888,7 @@ public class DefaultMessageStore implements MessageStore {
         long lastQueryMsgTime = end;
 
         for (int i = 0; i < 3; i++) {
+            //1、从indexService中查询所有offset
             QueryOffsetResult queryOffsetResult = this.indexService.queryOffset(topic, key, maxNum, begin, lastQueryMsgTime);
             if (queryOffsetResult.getPhyOffsets().isEmpty()) {
                 break;
@@ -910,6 +921,7 @@ public class DefaultMessageStore implements MessageStore {
 //                    }
 
                     if (match) {
+                        //2、根据offset，到CommitLog读取消息详情
                         SelectMappedBufferResult result = this.commitLog.getData(offset, false);
                         if (result != null) {
                             int size = result.getByteBuffer().getInt(0);
@@ -1335,6 +1347,14 @@ public class DefaultMessageStore implements MessageStore {
         return true;
     }
 
+    /**
+     *什么是恢复 consumeQueue ，前面不是有步骤 Ioad 了 consumeQueue 吗，
+     * 为什么还要恢复？前而 lood 步骤创建了 MopedFile 对象建立了文件的内存映射
+     * ，但是数据是否正确，现在文件写到哪了（ wroteposition )
+     * , Flush 到了什么位置（ committedposition ) ? 恢复数据来帮我解决这些问题。
+     *
+     * @param lastExitOK
+     */
     private void recover(final boolean lastExitOK) {
         long maxPhyOffsetOfConsumeQueue = this.recoverConsumeQueue();
 
@@ -1342,6 +1362,8 @@ public class DefaultMessageStore implements MessageStore {
             //正常恢复
             this.commitLog.recoverNormally(maxPhyOffsetOfConsumeQueue);
         } else {//异常恢复
+            //在异常恢复 commitLog 时会重新构建请到 D ispatchMessageserVICe 服务，
+            // 来重新生成 ConsumeQueue 数据，索引以及事物消息的 redolog
             this.commitLog.recoverAbnormally(maxPhyOffsetOfConsumeQueue);
         }
 
