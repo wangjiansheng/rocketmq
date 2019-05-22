@@ -42,6 +42,7 @@ import java.security.PrivilegedAction;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+//检查wrotepostion是否等于fileSize，若相等则表示文件已经写满；
 public class MappedFile extends ReferenceResource {
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -49,10 +50,10 @@ public class MappedFile extends ReferenceResource {
     private static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
 
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
-    // 文件写的位置
+    // 当前文件写的位置  用于文件判断是否写满 和 fileSize 判断fileSize
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
     //ADD BY ChenYang
-    // 刷盘之后的位置
+    // 刷盘之后的位置  flush到什么位置
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
     protected int fileSize;
@@ -69,7 +70,7 @@ public class MappedFile extends ReferenceResource {
     private long fileFromOffset;
     // 文件对象
     private File file;
-    // 文件映射为的内存
+    // 文件映射为的内存  postion永远不变
     private MappedByteBuffer mappedByteBuffer;
     private volatile long storeTimestamp = 0;
     private boolean firstCreateInQueue = false;
@@ -197,7 +198,7 @@ public class MappedFile extends ReferenceResource {
     public FileChannel getFileChannel() {
         return fileChannel;
     }
-
+    //向文件顺序写操作（appendMessage）
     public AppendMessageResult appendMessage(final MessageExtBrokerInner msg, final AppendMessageCallback cb) {
         return appendMessagesInner(msg, cb);
     }
@@ -239,6 +240,7 @@ public class MappedFile extends ReferenceResource {
     public boolean appendMessage(final byte[] data) {
         int currentPos = this.wrotePosition.get();
 
+        //判断文件是否能保存下数据
         if ((currentPos + data.length) <= this.fileSize) {
             try {
                 this.fileChannel.position(currentPos);
@@ -254,6 +256,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
+     * 从偏移量到偏移量+长度的数据内容将写入文件。   直接写到文件
      * Content of data from offset to offset + length will be wrote to file.
      *
      * @param offset The offset of the subarray to be used.
@@ -277,7 +280,13 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
-     * @return The current flushed position
+     * 写文件
+     * @return The current flushed position 当前冲洗位置
+     *
+     * FileChannel.force()方法将通道里尚未写入磁盘的数据强制写到磁盘上
+     * 。出于性能方面的考虑，操作系统会将数据缓存在内存中
+     * ，所以无法保证写入到FileChannel里的数据一定会
+     * 即时写到磁盘上。要保证这一点，需要调用force()方法。
      */
     public int flush(final int flushLeastPages) {
         if (this.isAbleToFlush(flushLeastPages)) {
@@ -286,7 +295,11 @@ public class MappedFile extends ReferenceResource {
 
                 try {
                     //We only append data to fileChannel or mappedByteBuffer, never both.
+                    //我们只在fileChannel或mappedByteBuffer中添加数据，从不同时添加。
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
+                        //force()方法有一个boolean类型的参数，指明是否同时将文件元数据（权限信息等）写到磁盘上。
+                        //下面的例子同时将文件数据和元数据强制写到磁盘上：
+                        //1	channel.force(true);
                         this.fileChannel.force(false);
                     } else {
                         this.mappedByteBuffer.force();
@@ -305,6 +318,7 @@ public class MappedFile extends ReferenceResource {
         return this.getFlushedPosition();
     }
 
+    //.消息刷盘
     public int commit(final int commitLeastPages) {
 
         if (writeBuffer == null) {
@@ -394,6 +408,7 @@ public class MappedFile extends ReferenceResource {
         return this.fileSize == this.wrotePosition.get();
     }
 
+    //随机读操作
     public SelectMappedBufferResult selectMappedBuffer(int pos, int size) {
         int readPosition = getReadPosition();
         if ((pos + size) <= readPosition) {
@@ -416,6 +431,7 @@ public class MappedFile extends ReferenceResource {
         return null;
     }
 
+    //根据pos查询内容
     public SelectMappedBufferResult selectMappedBuffer(int pos) {
         int readPosition = getReadPosition();
         if (pos < readPosition && pos >= 0) {
@@ -432,6 +448,8 @@ public class MappedFile extends ReferenceResource {
         return null;
     }
 
+    //清理内存操作
+    //Cleanup方法主要功能是在调用shutdown时清理掉内存中的二进制信息；
     @Override
     public boolean cleanup(final long currentRef) {
         if (this.isAvailable()) {

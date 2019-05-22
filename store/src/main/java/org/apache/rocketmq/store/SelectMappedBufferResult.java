@@ -58,7 +58,7 @@ public class SelectMappedBufferResult {
 //            this.release();
 //        }
 //    }
-
+//释放持有 isCleanupOver()变成ture
     public synchronized void release() {
         if (this.mappedFile != null) {
             this.mappedFile.release();

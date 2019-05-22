@@ -36,6 +36,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * CommitLog的索引文件，通过对Msg Key创建索引文件，来快速的定位消息。
+ * IndexService是线程类服务，在启动Broker时启动该线程服务。
+ *
+ * 该类主要有两个功能，第一，是定时的创建消息的索引；第二是为应用层提供访问index索引文件的接口。
  */
 public class IndexService {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -202,6 +205,34 @@ public class IndexService {
         return topic + "#" + key;
     }
 
+
+    /**
+     *
+     * 创建消息的索引（buildIndex）
+     *在将消息写入commitlog中之后，在调用DefaultMessageStore.DispatchMessageService
+     * .putRequest(DispatchRequest dispatchRequest)方法，
+     * 在该方法中将请求放入IndexService.requestQueue队列中，
+     * 由IndexService线程每隔3秒检测该队列中的请求信息。
+     * 若存在请求信息，则调用IndexService.buildIndex(Object[] req)方法
+     * 具体逻辑如下：
+     *1）调用retryGetAndCreateIndexFile方法获取Index文件的对象IndexFile。
+     * A）从IndexFile列表中获取最后一个IndexFile对象；若该对象对应的Index文件没有写满，
+     * 即IndexHeader的indexCount不大于2000W；则直接返回该对象；
+     *
+     * B）若获得的该对象为空或者已经写满，则创建新的IndexFile对象，即新的Index文件，
+     * 若是因为写满了而创建，则在创建新Index文件时将该写满的Index文件的endPhyOffset和endTimestamp
+     * 值初始化给新Index文件中IndexHeader的beginPhyOffset和beginTimestamp。
+     *
+     * C）启一个线程，调用IndexFile对象的fush将上一个写满的Index文件持久化到磁盘物理文件中；
+     * 然后更新StoreCheckpoint.IndexMsgTimestamp为该写满的Index文件中IndexHeader的endTimestamp；
+     *
+     * 2）遍历requestQueue队列中的请求消息。将每个请求消息的commitlogOffset值与获取的IndexFile文件的endPhyOffset进行比较
+     * ，若小于endPhyOffset值，则直接忽略该条请求信息；对于消息类型为Prepared和RollBack的也直接忽略掉。
+     *
+     * 3）对于一个topic可以有多个key值，每个key值以空格分隔，遍历每个key值，将topic-key值作为putKey方法的入参key值，
+     * 将该topic的物理偏移量存入Index文件中，若存入失败则再次获取IndexFile对象重复调用putKey方法。
+     * @param req
+     */
     public void buildIndex(DispatchRequest req) {
         IndexFile indexFile = retryGetAndCreateIndexFile();
         if (indexFile != null) {
@@ -236,6 +267,7 @@ public class IndexService {
                 for (int i = 0; i < keyset.length; i++) {
                     String key = keyset[i];
                     if (key.length() > 0) {
+                        //添加索引
                         indexFile = putKey(indexFile, msg, buildKey(topic, key));
                         if (indexFile == null) {
                             log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());

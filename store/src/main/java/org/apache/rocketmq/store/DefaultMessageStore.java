@@ -171,7 +171,9 @@ public class DefaultMessageStore implements MessageStore {
         boolean result = true;
 
         try {
-            boolean lastExitOK = !this.isTempFileExist();
+            //判断临时文件是否存在  //先调load ->initialize，在调start（创建abort).这是还没有创建临时文件abort
+            boolean lastExitOK = !this.isTempFileExist();//不存在正常启动
+            //normally 正常    abnormally 异常
             log.info("last shutdown {}", lastExitOK ? "normally" : "abnormally");
 
             if (null != scheduleMessageService) {
@@ -188,9 +190,13 @@ public class DefaultMessageStore implements MessageStore {
             if (result) {
                 this.storeCheckpoint =
                         new StoreCheckpoint(StorePathConfigHelper.getStoreCheckpoint(this.messageStoreConfig.getStorePathRootDir()));
-
+                //加载索引
+                //判断是否加载正确。系统启动的启动存储服务（DefaultMessagestore ）的时候会创建一个临时文件 abort
+                // ，当系统正常关闭的时候会把这个文件删掉，这个类似在 IinuX
+                // 下打开 Vi 编辑器生成那个临时文件，
+                // 所有当这个 abort 文件存在，系统认为是异常恢复
                 this.indexService.load(lastExitOK);
-
+                //尝试数据恢复
                 this.recover(lastExitOK);
 
                 log.info("load over, and the max phy offset = {}", this.getMaxPhyOffset());
@@ -276,9 +282,10 @@ public class DefaultMessageStore implements MessageStore {
         this.flushConsumeQueueService.start();
         this.commitLog.start();
         this.storeStatsService.start();
-
+        //创建临时文件，用于判断是否正确启动
         this.createTempFile();
         log.debug("添加定时任务");
+        //初始化线程
         this.addScheduleTask();
         this.shutdown = false;
     }
@@ -389,6 +396,7 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         long beginTime = this.getSystemClock().now();
+        //委托.commitLog.putMessage
         PutMessageResult result = this.commitLog.putMessage(msg);
 
         long eclipseTime = this.getSystemClock().now() - beginTime;
@@ -1331,8 +1339,9 @@ public class DefaultMessageStore implements MessageStore {
         long maxPhyOffsetOfConsumeQueue = this.recoverConsumeQueue();
 
         if (lastExitOK) {
+            //正常恢复
             this.commitLog.recoverNormally(maxPhyOffsetOfConsumeQueue);
-        } else {
+        } else {//异常恢复
             this.commitLog.recoverAbnormally(maxPhyOffsetOfConsumeQueue);
         }
 
@@ -1477,7 +1486,7 @@ public class DefaultMessageStore implements MessageStore {
             }
         }, 6, TimeUnit.SECONDS);
     }
-
+    //ConsumeQueue文件构建
     class CommitLogDispatcherBuildConsumeQueue implements CommitLogDispatcher {
 
         @Override
@@ -1486,6 +1495,7 @@ public class DefaultMessageStore implements MessageStore {
             switch (tranType) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
+                    //保存ConsumeQueue数据
                     DefaultMessageStore.this.putMessagePositionInfo(request);
                     break;
                 case MessageSysFlag.TRANSACTION_PREPARED_TYPE:
@@ -1495,6 +1505,7 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    //索引文件构建
     class CommitLogDispatcherBuildIndex implements CommitLogDispatcher {
 
         @Override
@@ -1827,14 +1838,14 @@ public class DefaultMessageStore implements MessageStore {
                         && this.reputFromOffset >= DefaultMessageStore.this.getConfirmOffset()) {
                     break;
                 }
-
+                //更加offset获取消息
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {
                         this.reputFromOffset = result.getStartOffset();
 
                         for (int readSize = 0; readSize < result.getSize() && doNext; ) {
-                            DispatchRequest dispatchRequest =
+                            DispatchRequest dispatchRequest =  //检查消息并返回消息大小
                                     DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false, false);
                             int size = dispatchRequest.getBufferSize() == -1 ? dispatchRequest.getMsgSize() : dispatchRequest.getBufferSize();
 
@@ -1844,7 +1855,7 @@ public class DefaultMessageStore implements MessageStore {
 
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                             && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
-                                       //有消息到来，主动通知拉取的请求
+                                       //有消息到来，主动通知拉取的请求,调用pullrequset拉取消息的请求
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
                                                 dispatchRequest.getQueueId(), dispatchRequest.getConsumeQueueOffset() + 1,
                                                 dispatchRequest.getTagsCode(), dispatchRequest.getStoreTimestamp(),
@@ -1894,6 +1905,7 @@ public class DefaultMessageStore implements MessageStore {
             while (!this.isStopped()) {
                 try {
                     Thread.sleep(1);
+                    //消息分发
                     this.doReput();
                 } catch (Exception e) {
                     DefaultMessageStore.log.warn(this.getServiceName() + " service has exception. ", e);

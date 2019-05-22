@@ -20,12 +20,12 @@
  */
 package org.apache.rocketmq.store.index;
 
+import org.apache.rocketmq.common.UtilAll;
+import org.junit.Test;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.rocketmq.common.UtilAll;
-import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,7 +41,7 @@ public class IndexFileTest {
             assertThat(putResult).isTrue();
         }
 
-        // put over index file capacity.
+        // put over index file capacity. 提交索引文件容量。  测试超过索引文件容量。
         boolean putResult = indexFile.putKey(Long.toString(400), 400, System.currentTimeMillis());
         assertThat(putResult).isFalse();
         indexFile.destroy(0);

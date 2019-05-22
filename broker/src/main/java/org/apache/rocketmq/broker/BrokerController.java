@@ -198,6 +198,7 @@ public class BrokerController {
         return queryThreadPoolQueue;
     }
 
+    //先调initialize，在调start.这是还没有创建临时文件abort
     public boolean initialize() throws CloneNotSupportedException {
 
         log.debug("加载C:\\Users\\Administrator\\store\\config的文件");

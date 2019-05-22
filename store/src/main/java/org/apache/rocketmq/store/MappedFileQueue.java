@@ -40,8 +40,9 @@ public class MappedFileQueue {
     // 新建mapedFile的地方，将新建mapedFile的 request添加到requesttable和requestQueue中
     // 在MessageStore启动的时候会启动AllocateMapedFileService这个线程，执行requestQueue里面的request，新建mapedFile
     private final AllocateMappedFileService allocateMappedFileService;
-
+    //冲洗开始位置
     private long flushedWhere = 0;
+    //提交位置    刷盘刷到哪里
     private long committedWhere = 0;
 
     private volatile long storeTimestamp = 0;
@@ -188,16 +189,19 @@ public class MappedFileQueue {
 
         return 0;
     }
-
+    //获取最后一个 MappedFile，若不存在或文件已满，则进行创建。
     public MappedFile getLastMappedFile(final long startOffset, boolean needCreate) {
-        long createOffset = -1;
+        // 这个offeset是所有MappedFile的全局offset
+        long createOffset = -1;  // 创建文件开始offset。-1时，不创建
         MappedFile mappedFileLast = getLastMappedFile();
 
         if (mappedFileLast == null) {
             createOffset = startOffset - (startOffset % this.mappedFileSize);
         }
 
+        //mappedFileLast 当前文件不为空  &&  isFull();数据是否已经写满
         if (mappedFileLast != null && mappedFileLast.isFull()) {
+            //新建文件的开始offset   文件已经写满了
             createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;
         }
 
@@ -219,7 +223,7 @@ public class MappedFileQueue {
             }
 
             if (mappedFile != null) {
-                if (this.mappedFiles.isEmpty()) {
+                if (this.mappedFiles.isEmpty()) {  // 一个映射文件都不存在
                     mappedFile.setFirstCreateInQueue(true);
                 }
                 this.mappedFiles.add(mappedFile);
@@ -239,7 +243,8 @@ public class MappedFileQueue {
         MappedFile mappedFileLast = null;
 
         while (!this.mappedFiles.isEmpty()) {
-            try {
+            try {// 如果存在MappedFile对象，
+                // 则获取最后一个List<MapedFile> mapedFiles = new ArrayList<MapedFile>()
                 mappedFileLast = this.mappedFiles.get(this.mappedFiles.size() - 1);
                 break;
             } catch (IndexOutOfBoundsException e) {
@@ -283,6 +288,10 @@ public class MappedFileQueue {
         return true;
     }
 
+    /**
+     * 队列消息最小偏移量，即第一个文件的起始偏移量
+     * @return
+     */
     public long getMinOffset() {
 
         if (!this.mappedFiles.isEmpty()) {
@@ -297,6 +306,10 @@ public class MappedFileQueue {
         return -1;
     }
 
+    /**
+     * 文件最大偏移量，即队列目前写到的偏移量
+     * @return
+     */
     public long getMaxOffset() {
         MappedFile mappedFile = getLastMappedFile();
         if (mappedFile != null) {
@@ -346,12 +359,14 @@ public class MappedFileQueue {
         if (null != mfs) {
             for (int i = 0; i < mfsLength; i++) {
                 MappedFile mappedFile = (MappedFile) mfs[i];
+                //文件存活的最大时间
                 long liveMaxTimestamp = mappedFile.getLastModifiedTimestamp() + expiredTime;
+                //如果小于现在的时间，说明文件已经过期                        || 立即删除
                 if (System.currentTimeMillis() >= liveMaxTimestamp || cleanImmediately) {
                     if (mappedFile.destroy(intervalForcibly)) {
                         files.add(mappedFile);
                         deleteCount++;
-
+                        //一次最多删除默认10个文件
                         if (files.size() >= DELETE_FILES_BATCH_MAX) {
                             break;
                         }
@@ -366,17 +381,23 @@ public class MappedFileQueue {
                         break;
                     }
                 } else {
-                    //avoid deleting files in the middle
+                    //avoid deleting files in the middle避免删除中间的文件
                     break;
                 }
             }
         }
-
+        //删除MappedFile
         deleteExpiredFile(files);
 
         return deleteCount;
     }
 
+    /**
+     * 将小于offset的文件删除  offset和文件大小-unitSize比较
+     * @param offset
+     * @param unitSize
+     * @return
+     */
     public int deleteExpiredFileByOffset(long offset, int unitSize) {
         Object[] mfs = this.copyMappedFiles(0);
 
@@ -391,13 +412,16 @@ public class MappedFileQueue {
                 MappedFile mappedFile = (MappedFile) mfs[i];
                 SelectMappedBufferResult result = mappedFile.selectMappedBuffer(this.mappedFileSize - unitSize);
                 if (result != null) {
+                    //获取当前文件最大的offset,offset=mappedFileSize（文件大小）-unitSize(一个单位的字节大小)
                     long maxOffsetInLogicQueue = result.getByteBuffer().getLong();
                     result.release();
+                    //当前文件最大的offsets是否小于比较的offset(请求参数)，小于则符合删除条件
                     destroy = maxOffsetInLogicQueue < offset;
                     if (destroy) {
+                        //物理最小偏移量   ,逻辑在当前mappedFile最大偏移量 ,删除它
                         log.info("physic min offset " + offset + ", logics in current mappedFile max offset "
                                 + maxOffsetInLogicQueue + ", delete it");
-                    }
+                    }//可找到的 可得到
                 } else if (!mappedFile.isAvailable()) { // Handle hanged file.
                     log.warn("Found a hanged consume queue file, attempting to delete it.");
                     destroy = true;
@@ -405,7 +429,7 @@ public class MappedFileQueue {
                     log.warn("this being not executed forever.");
                     break;
                 }
-
+                //关流、删除文件
                 if (destroy && mappedFile.destroy(1000 * 60)) {
                     files.add(mappedFile);
                     deleteCount++;
@@ -414,17 +438,26 @@ public class MappedFileQueue {
                 }
             }
         }
-
+        //删除 MappedFile
         deleteExpiredFile(files);
 
         return deleteCount;
     }
 
+    /**
+     * FileChannel.force()方法将通道里尚未写入磁盘的数据强制写到磁盘上
+     * 。出于性能方面的考虑，操作系统会将数据缓存在内存中
+     * ，所以无法保证写入到FileChannel里的数据一定
+     * 会即时写到磁盘上。要保证这一点，需要调用force()方法。
+     * @param flushLeastPages
+     * @return
+     */
     public boolean flush(final int flushLeastPages) {
         boolean result = true;
         MappedFile mappedFile = this.findMappedFileByOffset(this.flushedWhere, this.flushedWhere == 0);
         if (mappedFile != null) {
             long tmpTimeStamp = mappedFile.getStoreTimestamp();
+            //里面调用fileChannel.force
             int offset = mappedFile.flush(flushLeastPages);
             long where = mappedFile.getFileFromOffset() + offset;
             result = where == this.flushedWhere;
@@ -455,6 +488,7 @@ public class MappedFileQueue {
      *
      * @param offset                Offset.
      * @param returnFirstOnNotFound If the mapped file is not found, then return the first one.
+     *                              如果没有找到映射文件，则返回第一个文件
      * @return Mapped file or null (when not found and returnFirstOnNotFound is <code>false</code>).
      */
     public MappedFile findMappedFileByOffset(final long offset, final boolean returnFirstOnNotFound) {
@@ -597,6 +631,7 @@ public class MappedFileQueue {
     public int getMappedFileSize() {
         return mappedFileSize;
     }
+
 
     public long getCommittedWhere() {
         return committedWhere;

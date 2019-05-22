@@ -23,7 +23,7 @@ public abstract class ReferenceResource {
     protected volatile boolean available = true;
     protected volatile boolean cleanupOver = false;
     private volatile long firstShutdownTimestamp = 0;
-
+    //持有   ，不能删除
     public synchronized boolean hold() {
         if (this.isAvailable()) {
             if (this.refCount.getAndIncrement() > 0) {
@@ -40,6 +40,7 @@ public abstract class ReferenceResource {
         return this.available;
     }
 
+    //  修改available和 释放持有
     public void shutdown(final long intervalForcibly) {
         if (this.available) {
             this.available = false;

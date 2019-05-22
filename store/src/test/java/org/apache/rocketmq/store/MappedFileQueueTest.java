@@ -17,15 +17,17 @@
 
 package org.apache.rocketmq.store;
 
-import java.io.File;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 import org.apache.rocketmq.common.UtilAll;
 import org.junit.After;
 import org.junit.Test;
 
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
+//重要
 public class MappedFileQueueTest {
     @Test
     public void testGetLastMappedFile() {
@@ -40,13 +42,14 @@ public class MappedFileQueueTest {
             assertThat(mappedFile.appendMessage(fixedMsg.getBytes())).isTrue();
         }
 
+        System.out.println(fixedMsg.getBytes().length);
         mappedFileQueue.shutdown(1000);
         mappedFileQueue.destroy();
     }
 
     @Test
     public void testFindMappedFileByOffset() {
-        // four-byte string.
+        // four-byte string. 四字节字符串。
         final String fixedMsg = "abcd";
 
         MappedFileQueue mappedFileQueue =
@@ -58,6 +61,7 @@ public class MappedFileQueueTest {
             assertThat(mappedFile.appendMessage(fixedMsg.getBytes())).isTrue();
         }
 
+        System.out.println(mappedFileQueue.getMappedMemorySize());
         assertThat(mappedFileQueue.getMappedMemorySize()).isEqualTo(fixedMsg.getBytes().length * 1024);
 
         MappedFile mappedFile = mappedFileQueue.findMappedFileByOffset(0);
@@ -84,7 +88,8 @@ public class MappedFileQueueTest {
         assertThat(mappedFile).isNotNull();
         assertThat(mappedFile.getFileFromOffset()).isEqualTo(1024 * 2);
 
-        // over mapped memory size.
+        mappedFile = mappedFileQueue.findMappedFileByOffset(1024 * 3);
+        // over mapped memory size. 超过映射内存大小。
         mappedFile = mappedFileQueue.findMappedFileByOffset(1024 * 4);
         assertThat(mappedFile).isNull();
 
@@ -95,12 +100,12 @@ public class MappedFileQueueTest {
         mappedFileQueue.destroy();
     }
 
-    @Test
+    @Test//从非零偏移量开始
     public void testFindMappedFileByOffset_StartOffsetIsNonZero() {
         MappedFileQueue mappedFileQueue =
             new MappedFileQueue("target/unit_test_store/b/", 1024, null);
 
-        //Start from a non-zero offset
+        //Start from a non-zero offset  从非零偏移量开始
         MappedFile mappedFile = mappedFileQueue.getLastMappedFile(1024);
         assertThat(mappedFile).isNotNull();
 
@@ -117,7 +122,7 @@ public class MappedFileQueueTest {
         mappedFileQueue.destroy();
     }
 
-    @Test
+    @Test//添加消息内容
     public void testAppendMessage() {
         final String fixedMsg = "0123456789abcdef";
 
@@ -152,13 +157,14 @@ public class MappedFileQueueTest {
         mappedFileQueue.destroy();
     }
 
-    @Test
+    @Test//获取内存大小
     public void testGetMappedMemorySize() {
+        //4个字节
         final String fixedMsg = "abcd";
 
         MappedFileQueue mappedFileQueue =
             new MappedFileQueue("target/unit_test_store/d/", 1024, null);
-
+        // 可以保存3个文件
         for (int i = 0; i < 1024; i++) {
             MappedFile mappedFile = mappedFileQueue.getLastMappedFile(0);
             assertThat(mappedFile).isNotNull();
@@ -170,7 +176,7 @@ public class MappedFileQueueTest {
         mappedFileQueue.destroy();
     }
 
-    @Test
+    @Test//根据offset删除过去的文件
     public void testDeleteExpiredFileByOffset() {
         MappedFileQueue mappedFileQueue =
             new MappedFileQueue("target/unit_test_store/e", 5120, null);
@@ -189,7 +195,7 @@ public class MappedFileQueueTest {
         }
 
         MappedFile first = mappedFileQueue.getFirstMappedFile();
-        first.hold();
+        first.hold();//refCount 不为0，所以不能删除，isCleanupOver()中判断了改值
 
         assertThat(mappedFileQueue.deleteExpiredFileByOffset(20480, ConsumeQueue.CQ_STORE_UNIT_SIZE)).isEqualTo(0);
         first.release();
@@ -202,7 +208,7 @@ public class MappedFileQueueTest {
         mappedFileQueue.destroy();
     }
 
-    @Test
+    @Test//根据时间删除过去的文件
     public void testDeleteExpiredFileByTime() throws Exception {
         MappedFileQueue mappedFileQueue =
             new MappedFileQueue("target/unit_test_store/f/", 1024, null);
@@ -227,6 +233,7 @@ public class MappedFileQueueTest {
         }
         mappedFileQueue.deleteExpiredFileByTime(expiredTime, 0, 0, false);
         assertThat(mappedFileQueue.getMappedFiles().size()).isEqualTo(45);
+        mappedFileQueue.destroy();
     }
 
     @Test

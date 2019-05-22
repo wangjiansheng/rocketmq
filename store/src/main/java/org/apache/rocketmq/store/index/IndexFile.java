@@ -16,17 +16,42 @@
  */
 package org.apache.rocketmq.store.index;
 
+import org.apache.rocketmq.common.constant.LoggerName;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
+import org.apache.rocketmq.store.MappedFile;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.util.List;
-import org.apache.rocketmq.common.constant.LoggerName;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
-import org.apache.rocketmq.store.MappedFile;
 
+/**
+ * Header  +solr talbe   index linked list
+ *  40b       500w*4b       2000W*20
+ * 文件名fileName是以创建时的时间戳命名的，文件大小是固定的，等于40+500W*4+2000W*20= 420000040个字节大小。
+ *
+ * Index Header结构各字段的含义：
+ * beginTimestamp：第一个索引消息落在Broker的时间戳；
+ * endTimestamp：最后一个索引消息落在Broker的时间戳；
+ * beginPhyOffset：第一个索引消息在commitlog的偏移量；
+ * endPhyOffset：最后一个索引消息在commitlog的偏移量；
+ * hashSlotCount：构建索引占用的槽位数；
+ * indexCount：构建的索引个数；
+ *
+ * IndexFile作用
+ * MessageStore中存储的消息除了通过ConsumeQueue提供给consumer消费之外，
+ * 还支持通过MessageID或者MessageKey来查询消息。使用ID查询时，
+ * 因为ID就是用broker+offset生成的，所以很容易就找到对应的commitLog文件来读取消息。
+ * 对于用MessageKey来查询消息，MessageStore通过构建一个index来提高读取速度。
+ *
+ *
+ *整个slotTable+indexLinkedList可以理解成java的HashMap。每当放一个新的消息的index进来，
+ * 首先取MessageKey的hashCode，然后用hashCode对slot总数取模，得到应该放到哪个slot中，slot总数系统默认500W个。
+ *
+ */
 public class IndexFile {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static int hashSlotSize = 4;
@@ -71,6 +96,7 @@ public class IndexFile {
         this.indexHeader.load();
     }
 
+    //持久化到磁盘物理文件
     public void flush() {
         long beginTime = System.currentTimeMillis();
         if (this.mappedFile.hold()) {
@@ -90,6 +116,7 @@ public class IndexFile {
     }
 
     public boolean putKey(final String key, final long phyOffset, final long storeTimestamp) {
+        //判断是否超索引文件容量
         if (this.indexHeader.getIndexCount() < this.indexNum) {
             int keyHash = indexKeyHashMethod(key);
             int slotPos = keyHash % this.hashSlotNum;

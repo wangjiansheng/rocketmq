@@ -26,13 +26,17 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * 按topic和queue存储消息，相同topic和queue的消息存储在一起，内容是commitLog的offset
+ * 按topic和queue存储消息，相同topic和queue的消息存储在一起，内容是commitLog的offset(消息存在位置)
  * 。consumer是按照queue来拉取消息的
  * ，所以都是先读取consumeQueue拿到offset的列表，然后到commitLog读取消息详情
+ *
+ * 00000000000000000000代表了第一个文件，起始偏移量为0，文件大小为600W。
+ *当第一个文件满之后创建的第二个文件的名字为00000000000006000000，起始偏移量为6000000。
  */
 public class ConsumeQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    //存储单元未20字节定长的数据
     public static final int CQ_STORE_UNIT_SIZE = 20;
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
@@ -41,6 +45,9 @@ public class ConsumeQueue {
     private final MappedFileQueue mappedFileQueue;
     private final String topic;
     private final int queueId;
+    // 8byte      +       4byte       +8byte
+    //commitoffset          size       message tag hasecode
+    //每个文件的默认大小为600万个字节 即30w个数据
     private final ByteBuffer byteBufferIndex;
 
     private final String storePath;
