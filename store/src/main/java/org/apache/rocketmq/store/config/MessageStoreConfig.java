@@ -31,20 +31,20 @@ public class MessageStoreConfig {
     private String storePathCommitLog = System.getProperty("user.home") + File.separator + "store"
         + File.separator + "commitlog";
 
-    // CommitLog file size,default is 1G
+    // CommitLog file size,default is 1G CommitLog文件大小默认1G
     private int mapedFileSizeCommitLog = 1024 * 1024 * 1024;
-    // ConsumeQueue file size,default is 30W
+    // ConsumeQueue file size,default is 30W  ConsumeQueue文件大小，默认为30W
     private int mapedFileSizeConsumeQueue = 300000 * ConsumeQueue.CQ_STORE_UNIT_SIZE;
-    // enable consume queue ext
+    // enable consume queue ext 启用消费队列ext
     private boolean enableConsumeQueueExt = false;
-    // ConsumeQueue extend file size, 48M
+    // ConsumeQueue extend file size, 48M ConsumeQueue扩展文件大小
     private int mappedFileSizeConsumeQueueExt = 48 * 1024 * 1024;
     // Bit count of filter bit map.
     // this will be set by pipe of calculate filter bit map.
     private int bitMapLengthConsumeQueueExt = 64;
 
-    // CommitLog flush interval
-    // flush data to disk
+    // CommitLog flush interval  CommitLog冲洗间隔
+    // flush data to disk 将数据刷新到磁盘
     @ImportantField
     private int flushIntervalCommitLog = 500;
 
@@ -117,7 +117,11 @@ public class MessageStoreConfig {
     private int accessMessageInMemoryMaxRatio = 40;
     @ImportantField
     private boolean messageIndexEnable = true;
+    //槽位个数 默认500w
     private int maxHashSlotNum = 5000000;
+    //solr table 4*500w
+    //hash冲突均值4 也就是平均有个索引的hash值是相同的 当然可能也会存在这种可能:
+    // 索引个数达到了maxIndexNum，hashSlot确没有填充满(这种可能是很小的)
     private int maxIndexNum = 5000000 * 4;
     private int maxMsgsNumBatch = 64;
     @ImportantField

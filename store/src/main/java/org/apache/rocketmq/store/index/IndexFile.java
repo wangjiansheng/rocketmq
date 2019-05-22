@@ -152,6 +152,12 @@ public class IndexFile {
                     IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                         + this.indexHeader.getIndexCount() * indexSize;
                 //8、生成一个index的unit内容
+               /* 1. key hash value: message key的hash值
+                2. phyOffset: message在CommitLog的物理文件地址, 可以直接查询到该消息(索引的核心机制)
+                3. timeDiff: message的落盘时间与header里的beginTimestamp的差值
+                (为了节省存储空间，如果直接存message的落盘时间就得8bytes)
+                4. prevIndex: hash冲突处理的关键之处, 相同hash值上一个消息索引的index
+                (如果当前消息索引是该hash值的第一个索引，则prevIndex=0, 也是消息索引查找时的停止条件。)*/
                 this.mappedByteBuffer.putInt(absIndexPos, keyHash);
                 this.mappedByteBuffer.putLong(absIndexPos + 4, phyOffset);
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int) timeDiff);
@@ -221,7 +227,9 @@ public class IndexFile {
         if (this.mappedFile.hold()) {
             //1、跟生成索引时一样，找到key的slot
             int keyHash = indexKeyHashMethod(key);
+            //2. 计算该hash value 对应的hash slot位置
             int slotPos = keyHash % this.hashSlotNum;
+            //3. 计算该hash value 对应的hash slot物理文件位置
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -230,33 +238,35 @@ public class IndexFile {
                     // fileLock = this.fileChannel.lock(absSlotPos,
                     // hashSlotSize, true);
                 }
-                //2、获取该槽位上的最后一条索引的序号
+                //2、获取该槽位上的最后一条索引的序号   //4. 取出该hash slot 的值
                 int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
                 // if (fileLock != null) {
                 // fileLock.release();
                 // fileLock = null;
                 // }
-
+                //5. 该slot value <= 0 就代表没有该key对应的消息索引,直接结束搜索
+                //   该slot value > maxIndexCount 就代表该key对应的消息索引超过最大限制，数据有误,直接结束搜索
                 if (slotValue <= invalidIndex || slotValue > this.indexHeader.getIndexCount()
                     || this.indexHeader.getIndexCount() <= 1) {
-                } else {
+                } else { //6. 从当前slot value 开始搜索
                     for (int nextIndexToRead = slotValue; ; ) {
                         if (phyOffsets.size() >= maxNum) {//到达最大返回条数
                             break;
                         }
-                        //3、找到index的位置
+                        //3、找到index的位置   //7. 找到当前slot value(也就是index count)物理文件位置
                         int absIndexPos =
                             IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                                 + nextIndexToRead * indexSize;
-
+                        //8. 读取消息索引数据
                         int keyHashRead = this.mappedByteBuffer.getInt(absIndexPos);
                         //4、在commitlog中偏移
                         long phyOffsetRead = this.mappedByteBuffer.getLong(absIndexPos + 4);
 
                         long timeDiff = (long) this.mappedByteBuffer.getInt(absIndexPos + 4 + 8);
                         //5、相同hashcode的前一条消息的序号
+                        //9. 获取该消息索引的上一个消息索引index(可以看成链表的prev 指向上一个链节点的引用)
                         int prevIndexRead = this.mappedByteBuffer.getInt(absIndexPos + 4 + 8 + 4);
-
+                        //10. 数据校验
                         if (timeDiff < 0) {
                             break;
                         }
@@ -266,10 +276,12 @@ public class IndexFile {
                         long timeRead = this.indexHeader.getBeginTimestamp() + timeDiff;
                         boolean timeMatched = (timeRead >= begin) && (timeRead <= end);
                         //6、Hash和time都符合条件，加入返回列表
+                        //10. 数据校验比对 hash值和落盘时间
                         if (keyHash == keyHashRead && timeMatched) {
                             phyOffsets.add(phyOffsetRead);
                         }
-
+                        //当prevIndex <= 0 或prevIndex > maxIndexCount
+                        // 或prevIndexRead == nextIndexToRead 或 timeRead < begin 停止搜索
                         if (prevIndexRead <= invalidIndex
                             || prevIndexRead > this.indexHeader.getIndexCount()
                             || prevIndexRead == nextIndexToRead || timeRead < begin) {

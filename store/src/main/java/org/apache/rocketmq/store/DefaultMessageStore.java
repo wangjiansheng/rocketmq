@@ -704,6 +704,7 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     public MessageExt lookMessageByOffset(long commitLogOffset) {
+        //获取消息的大小
         SelectMappedBufferResult sbr = this.commitLog.getMessage(commitLogOffset, 4);
         if (null != sbr) {
             try {
@@ -905,6 +906,7 @@ public class DefaultMessageStore implements MessageStore {
                 try {
 
                     boolean match = true;
+                    //查询消息内容
                     MessageExt msg = this.lookMessageByOffset(offset);
                     if (0 == m) {
                         lastQueryMsgTime = msg.getStoreTimestamp();
