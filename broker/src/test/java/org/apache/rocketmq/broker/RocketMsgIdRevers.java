@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 
 /**
+ * 消息id解析
  * Created by wangjs on 2019/5/13.
  */
 public class RocketMsgIdRevers {

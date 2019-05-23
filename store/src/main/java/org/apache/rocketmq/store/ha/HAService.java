@@ -85,6 +85,9 @@ public class HAService {
         return result;
     }
 
+    //可以看到这里master会接收来自slave的8字节偏移量，将其保存作为s
+    // lave所汇报的当前最大偏移量保存，在同步master
+    // 当中将会尝试唤醒正在等待同步写操作结果的master以便继续下面的操作。
     public void notifyTransferSome(final long offset) {
         for (long value = this.push2SlaveMaxOffset.get(); offset > value; ) {
             boolean ok = this.push2SlaveMaxOffset.compareAndSet(value, offset);
@@ -364,6 +367,7 @@ public class HAService {
             this.reportOffset.position(0);
             this.reportOffset.limit(8);
 
+            //通过3次将八字节的偏移数据向master传递，
             for (int i = 0; i < 3 && this.reportOffset.hasRemaining(); i++) {
                 try {
                     this.socketChannel.write(this.reportOffset);
@@ -399,7 +403,7 @@ public class HAService {
             this.byteBufferRead = this.byteBufferBackup;
             this.byteBufferBackup = tmp;
         }
-
+        //看到得到消息master回复之后，将会调用processReadEvent()方法来对消息进行存储。
         private boolean processReadEvent() {
             int readSizeZeroTimes = 0;
             while (this.byteBufferRead.hasRemaining()) {
@@ -408,6 +412,7 @@ public class HAService {
                     if (readSize > 0) {
                         lastWriteTimestamp = HAService.this.defaultMessageStore.getSystemClock().now();
                         readSizeZeroTimes = 0;
+                        //得到master的消息之后调用dispatchReadRequest()方法，解析数据。
                         boolean result = this.dispatchReadRequest();
                         if (!result) {
                             log.error("HAClient, dispatchReadRequest error");
@@ -441,7 +446,7 @@ public class HAService {
                     int bodySize = this.byteBufferRead.getInt(this.dispatchPostion + 8);
 
                     long slavePhyOffset = HAService.this.defaultMessageStore.getMaxPhyOffset();
-
+                    // 发生重大错误
                     if (slavePhyOffset != 0) {
                         if (slavePhyOffset != masterPhyOffset) {
                             log.error("master pushed offset not equal the max phy offset in slave, SLAVE: "
@@ -450,11 +455,13 @@ public class HAService {
                         }
                     }
 
+                    // 可以凑够一个请求
                     if (diff >= (msgHeaderSize + bodySize)) {
                         byte[] bodyData = new byte[bodySize];
                         this.byteBufferRead.position(this.dispatchPostion + msgHeaderSize);
                         this.byteBufferRead.get(bodyData);
 
+                        // 结果是否需要处理，暂时不处理
                         HAService.this.defaultMessageStore.appendToCommitLog(masterPhyOffset, bodyData);
 
                         this.byteBufferRead.position(readSocketPos);
@@ -506,7 +513,7 @@ public class HAService {
                         }
                     }
                 }
-
+                // 每次连接时，要重新拿到最大的Offset
                 this.currentReportedOffset = HAService.this.defaultMessageStore.getMaxPhyOffset();
 
                 this.lastWriteTimestamp = System.currentTimeMillis();
@@ -547,9 +554,12 @@ public class HAService {
             log.info(this.getServiceName() + " service started");
 
             while (!this.isStopped()) {
-                try {
+                try {//尝试与master进行连接。
                     if (this.connectMaster()) {
-
+                        // 先汇报最大物理Offset || 定时心跳方式汇
+                        //通过isTImeToReportOffset()方法来判断当前时间与上一次写时间是否宪相隔超过所配置
+                        // 的时间间隔，如果超过，则会通过repirtSlaveMaxOffset()方
+                        // 法向master报告当前最大offset并作为心跳数据。
                         if (this.isTimeToReportOffset()) {
                             boolean result = this.reportSlaveMaxOffset(this.currentReportedOffset);
                             if (!result) {
@@ -557,17 +567,20 @@ public class HAService {
                             }
                         }
 
+                        // 等待应答
                         this.selector.select(1000);
-
+                        // 接收数据
                         boolean ok = this.processReadEvent();
                         if (!ok) {
                             this.closeMaster();
                         }
 
+                        // 只要本地有更新，就汇报最大物理Offset
                         if (!reportSlaveMaxOffsetPlus()) {
                             continue;
                         }
 
+                        // 检查Master的反向心跳
                         long interval =
                             HAService.this.getDefaultMessageStore().getSystemClock().now()
                                 - this.lastWriteTimestamp;

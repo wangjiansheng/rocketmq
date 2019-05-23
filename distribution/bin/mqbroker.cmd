@@ -15,7 +15,7 @@ rem See the License for the specific language governing permissions and
 rem limitations under the License.
 
 if not exist "%ROCKETMQ_HOME%\bin\runbroker.cmd" echo Please set the ROCKETMQ_HOME variable in your environment! & EXIT /B 1
-
+:: call命令用来从一个批处理脚本中调用另一个批处理脚本。
 call "%ROCKETMQ_HOME%\bin\runbroker.cmd" org.apache.rocketmq.broker.BrokerStartup %*
 
 IF %ERRORLEVEL% EQU 0 (

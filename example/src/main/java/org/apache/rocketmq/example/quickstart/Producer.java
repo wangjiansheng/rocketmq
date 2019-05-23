@@ -24,6 +24,9 @@ import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 /**
  * This class demonstrates how to send messages to brokers using provided {@link DefaultMQProducer}.
+ *
+ *  start mqnamesrv.cmd
+ *  start mqbroker.cmd -n 127.0.0.1:9876 autoCreateTopicEnable=true
  */
 public class Producer {
     public static void main(String[] args) throws MQClientException, InterruptedException {

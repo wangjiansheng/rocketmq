@@ -857,7 +857,10 @@ public class BrokerController {
 
         if (!messageStoreConfig.isEnableDLegerCommitLog()) {
             //事物 transactionalMessageCheckService
+            // 如果不是slave角色的broker，启动事务消息检查，遍历未提交、未回滚的部分消息并向生产者发送检查请求以获取事务状态
+            // 进行偏移量的检查和计算等操作，并移除掉需要丢弃的消息
             startProcessorByHa(messageStoreConfig.getBrokerRole());
+            // 处理slave同步操作，同步topic配置、消费者偏移量、延迟偏移量、订阅组配置等信息
             handleSlaveSynchronize(messageStoreConfig.getBrokerRole());
         }
 
@@ -1125,7 +1128,7 @@ public class BrokerController {
                 }
             }, 1000 * 3, 1000 * 10, TimeUnit.MILLISECONDS);
         } else {
-            //handle the slave synchronise
+            //handle the slave synchronise 处理从同步
             if (null != slaveSyncFuture) {
                 slaveSyncFuture.cancel(false);
             }
