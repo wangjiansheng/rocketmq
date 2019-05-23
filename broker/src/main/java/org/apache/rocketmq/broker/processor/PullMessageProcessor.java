@@ -86,13 +86,20 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         return false;
     }
 
+    /**
+     * @param channel 网络通道
+     * @param request 消息拉取请求
+     * @param brokerAllowSuspend 是否允许挂起，也就是是否允许在未找到消息时暂时挂起线程。第一次调用时默认为true。
+     * @return
+     * @throws RemotingCommandException
+     */
     private RemotingCommand processRequest(final Channel channel, RemotingCommand request, boolean brokerAllowSuspend)
         throws RemotingCommandException {
         RemotingCommand response = RemotingCommand.createResponseCommand(PullMessageResponseHeader.class);
         final PullMessageResponseHeader responseHeader = (PullMessageResponseHeader) response.readCustomHeader();
         final PullMessageRequestHeader requestHeader =
             (PullMessageRequestHeader) request.decodeCommandCustomHeader(PullMessageRequestHeader.class);
-
+        //这里的opaque是我们每次新建一个RemotingCommand时，就会自动+1.可以理解为RemotingCommand的id
         response.setOpaque(request.getOpaque());
 
         log.debug("receive PullMessage request command, {}", request);
@@ -116,11 +123,11 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             response.setRemark("subscription group no permission, " + requestHeader.getConsumerGroup());
             return response;
         }
-
+        //hasSuspendFlag,构建消息拉取时的拉取标记，默认为true。
         final boolean hasSuspendFlag = PullSysFlag.hasSuspendFlag(requestHeader.getSysFlag());
         final boolean hasCommitOffsetFlag = PullSysFlag.hasCommitOffsetFlag(requestHeader.getSysFlag());
         final boolean hasSubscriptionFlag = PullSysFlag.hasSubscriptionFlag(requestHeader.getSysFlag());
-
+        //取自DefaultMQPullConsumer的brokerSuspendMaxTimeMillis属性。
         final long suspendTimeoutMillisLong = hasSuspendFlag ? requestHeader.getSuspendTimeoutMillis() : 0;
 
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
@@ -346,7 +353,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                         break;
                     case ResponseCode.PULL_NOT_FOUND:
                         if (!brokerAllowSuspend) {
-
+                            //brokerAllowSuspend：是否允许挂起，也就是是否允许在未找到消息时暂时挂起线程。第一次调用时默认为true。
                             context.setCommercialRcvStats(BrokerStatsManager.StatsType.RCV_EPOLLS);
                             context.setCommercialRcvTimes(1);
                             context.setCommercialOwner(owner);
@@ -412,6 +419,8 @@ public class PullMessageProcessor implements NettyRequestProcessor {
 
                     if (brokerAllowSuspend && hasSuspendFlag) {
                         long pollingTimeMills = suspendTimeoutMillisLong;
+                        //如果不支持长轮询，则忽略brokerSuspendMaxTimeMillis属性，\
+                        // 使用shortPollingTimeMills，默认为1000ms作为下一次拉取消息的等待时间。
                         if (!this.brokerController.getBrokerConfig().isLongPollingEnable()) {
                             pollingTimeMills = this.brokerController.getBrokerConfig().getShortPollingTimeMills();
                         }
@@ -419,14 +428,20 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                         String topic = requestHeader.getTopic();
                         long offset = requestHeader.getQueueOffset();
                         int queueId = requestHeader.getQueueId();
+                        //创建PullRequest,然后提交给PullRequestHoldService线程去调度，触发消息拉取。
                         PullRequest pullRequest = new PullRequest(request, channel, pollingTimeMills,
                             this.brokerController.getMessageStore().now(), offset, subscriptionData, messageFilter);
                         //向PullRequestHoldService的pullRequestList和pullRequestTable添加数据，
                         //待线程执行
                         this.brokerController.getPullRequestHoldService().
                                 suspendPullRequest(topic, queueId, pullRequest);
+                        //关键，设置response=null，则此时此次调用不会向客户端输出任何字节，
+                        // 客户端网络请求客户端的读事件不会触发，不会触发对响应结果的处理，处于等待状态。
                         response = null;
                         break;
+                        //在拉取消息时，如果拉取结果为PULL_NOT_FOUND，
+                        // 在服务端默认会挂起线程，然后根据是否启用长轮询机制，
+                        // 延迟一定时间后再次重试根据偏移量查找消息。
                     }
 
                 case ResponseCode.PULL_RETRY_IMMEDIATELY:
@@ -466,10 +481,11 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             response.setRemark("store getMessage return null");
         }
 
-        boolean storeOffsetEnable = brokerAllowSuspend;
+        boolean storeOffsetEnable = brokerAllowSuspend;//默认为false
         storeOffsetEnable = storeOffsetEnable && hasCommitOffsetFlag;
         storeOffsetEnable = storeOffsetEnable
             && this.brokerController.getMessageStoreConfig().getBrokerRole() != BrokerRole.SLAVE;
+        //保存offset
         if (storeOffsetEnable) {
             this.brokerController.getConsumerOffsetManager().commitOffset(RemotingHelper.parseChannelRemoteAddr(channel),
                 requestHeader.getConsumerGroup(), requestHeader.getTopic(), requestHeader.getQueueId(), requestHeader.getCommitOffset());

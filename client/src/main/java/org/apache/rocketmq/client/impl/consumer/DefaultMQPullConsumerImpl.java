@@ -228,7 +228,7 @@ public class DefaultMQPullConsumerImpl implements MQConsumerInner {
             subscriptionData.getSubString(),
             subscriptionData.getExpressionType(),
             isTagType ? 0L : subscriptionData.getSubVersion(),
-            offset,
+            offset, //queryoffset
             maxNums,
             sysFlag,
             0,

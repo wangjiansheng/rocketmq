@@ -187,6 +187,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     }
 
     public void pullMessage(final PullRequest pullRequest) {
+        //正在被消费的队列
         final ProcessQueue processQueue = pullRequest.getProcessQueue();
         if (processQueue.isDropped()) {
             log.info("the pull request[{}] is dropped.", pullRequest.toString());
@@ -416,13 +417,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 subExpression,
                 subscriptionData.getExpressionType(),
                 subscriptionData.getSubVersion(),
-                pullRequest.getNextOffset(),
+                pullRequest.getNextOffset(),//queryoffset
                 this.defaultMQPushConsumer.getPullBatchSize(),
                 sysFlag,
                 commitOffsetValue,
                 //作用是设置Broker的最长阻塞时间，默认为15秒，前提是没有消息的情况下，有消息会立刻返回；
                 BROKER_SUSPEND_MAX_TIME_MILLIS,
-                //超时时间
+                //超时时间  30s
                 CONSUMER_TIMEOUT_MILLIS_WHEN_SUSPEND,
                 CommunicationMode.ASYNC,
                 pullCallback

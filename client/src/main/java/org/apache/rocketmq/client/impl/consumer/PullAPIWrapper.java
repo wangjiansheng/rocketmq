@@ -166,7 +166,7 @@ public class PullAPIWrapper {
         final String subExpression,
         final String expressionType,
         final long subVersion,
-        final long offset,
+        final long offset,//queryoffset
         final int maxNums,
         final int sysFlag,
         final long commitOffset,

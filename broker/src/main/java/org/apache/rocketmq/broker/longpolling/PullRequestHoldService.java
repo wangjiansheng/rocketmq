@@ -78,7 +78,7 @@ public class PullRequestHoldService extends ServiceThread {
         return sb.toString();
     }
 
-    @Override
+    @Override//PullRequestHoldService：每隔5S重试一次。
     public void run() {
         log.info("{} service started", this.getServiceName());
         while (!this.isStopped()) {
@@ -91,6 +91,7 @@ public class PullRequestHoldService extends ServiceThread {
                     this.waitForRunning(5 * 1000);
                 } else {
                     //private long shortPollingTimeMills = 1000;
+                   // 每处理一次重新拉取，Thread.sleep(1),继续下一次检查。
                     this.waitForRunning(this.brokerController.getBrokerConfig().getShortPollingTimeMills());
                 }
 
