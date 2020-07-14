@@ -35,12 +35,18 @@ public class TracePushConsumer {
         consumer.subscribe("TopicTest", "*");
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
         // Wrong time format 2017_0422_221800
+        //回溯消耗时间与第二精度
+        //默认回溯时间为半小时前。
         consumer.setConsumeTimestamp("20181109221800");
         consumer.registerMessageListener(new MessageListenerConcurrently() {
 
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
                 System.out.printf("%s Receive New Messages: %s %n", Thread.currentThread().getName(), msgs);
+                msgs.stream().forEach(s->{
+
+                    System.out.println(new String(s.getBody()));
+                });
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
         });

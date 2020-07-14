@@ -1,0 +1,8 @@
+运行  BrokerControllerTest
+
+
+运行  NamesrvStartup
+
+
+运行demo
+example项目下面的

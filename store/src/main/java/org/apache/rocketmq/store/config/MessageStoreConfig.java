@@ -107,7 +107,7 @@ public class MessageStoreConfig {
     private int flushConsumeQueueThoroughInterval = 1000 * 60;
     @ImportantField
     private int maxTransferBytesOnMessageInMemory = 1024 * 256;
-    @ImportantField
+    @ImportantField //单次pull消息的最大数目
     private int maxTransferCountOnMessageInMemory = 32;
     @ImportantField
     private int maxTransferBytesOnMessageInDisk = 1024 * 64;
