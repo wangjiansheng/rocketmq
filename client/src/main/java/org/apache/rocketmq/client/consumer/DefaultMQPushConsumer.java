@@ -16,9 +16,6 @@
  */
 package org.apache.rocketmq.client.consumer;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import org.apache.rocketmq.client.ClientConfig;
 import org.apache.rocketmq.client.QueryResult;
 import org.apache.rocketmq.client.consumer.listener.MessageListener;
@@ -43,6 +40,10 @@ import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.exception.RemotingException;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * In most scenarios, this is the mostly recommended class to consume messages.
@@ -215,12 +216,15 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private long pullInterval = 0;
 
     /**
+     * 批量消费
      * Batch consumption size
      */
     private int consumeMessageBatchMaxSize = 1;
 
     /**
      * Batch pull size
+     *  // 单次pull消息的最大条数为broker的maxTransferCountOnMessageInMemory=32，即pullBatchSize>32将不起效，除非重新设置maxTransferCountOnMessageInMemory
+     *         // 设置每次拉取的消息数为32
      */
     private int pullBatchSize = 32;
 
